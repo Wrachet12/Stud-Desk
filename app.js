@@ -1,6 +1,6 @@
 /* ===================== AUTH (real accounts via Supabase) ===================== */
-// Fill in your project's URL + anon key in js/config.js — see README.md.
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Fill in your project's URL + anon key in config.js — see below.
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentUserId = null;
 let data = null; // current user's app data object (mirrors a JSON column in Supabase)
@@ -46,7 +46,7 @@ document.getElementById('signupForm').addEventListener('submit', async (e)=>{
   if(pw!==confirm){ errEl.textContent="Passwords don't match."; return; }
   errEl.textContent='';
   submitBtn.disabled = true; submitBtn.textContent = 'Creating account…';
-  const { data: signUpData, error } = await supabase.auth.signUp({
+  const { data: signUpData, error } = await sb.auth.signUp({
     email, password: pw, options: { data: { name: name || email.split('@')[0] } }
   });
   submitBtn.disabled = false; submitBtn.textContent = 'Create account';
@@ -68,14 +68,14 @@ document.getElementById('loginForm').addEventListener('submit', async (e)=>{
   const errEl = document.getElementById('loginError');
   errEl.textContent='';
   submitBtn.disabled = true; submitBtn.textContent = 'Logging in…';
-  const { data: signInData, error } = await supabase.auth.signInWithPassword({ email, password: pw });
+  const { data: signInData, error } = await sb.auth.signInWithPassword({ email, password: pw });
   submitBtn.disabled = false; submitBtn.textContent = 'Log in';
   if(error){ errEl.textContent = 'Incorrect email or password.'; return; }
   await loadProfileAndEnter(signInData.user.id, signInData.user.email);
 });
 
 async function loadProfileAndEnter(userId, email){
-  const { data: profile, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
+  const { data: profile, error } = await sb.from('profiles').select('*').eq('id', userId).single();
   if(error || !profile){
     showToast('Could not load your account data — check your connection and try again.');
     return;
@@ -90,7 +90,7 @@ async function loadProfileAndEnter(userId, email){
 
 document.getElementById('logoutBtn').addEventListener('click', async ()=>{
   await saveData(); // flush any unsaved changes first
-  await supabase.auth.signOut();
+  await sb.auth.signOut();
   currentUserId=null; data=null;
   document.getElementById('appShell').style.display='none';
   document.getElementById('authOverlay').style.display='flex';
@@ -99,7 +99,7 @@ document.getElementById('logoutBtn').addEventListener('click', async ()=>{
 
 // Restore an existing session automatically (e.g. you refreshed the page).
 (async function restoreSession(){
-  const { data: sessionData } = await supabase.auth.getSession();
+  const { data: sessionData } = await sb.auth.getSession();
   if(sessionData && sessionData.session){
     await loadProfileAndEnter(sessionData.session.user.id, sessionData.session.user.email);
   }
@@ -114,7 +114,7 @@ function scheduleSave(){
 async function saveData(){
   if(!currentUserId || !data) return;
   try{
-    await supabase.from('profiles').update({ app_data: data, updated_at: new Date().toISOString() }).eq('id', currentUserId);
+    await sb.from('profiles').update({ app_data: data, updated_at: new Date().toISOString() }).eq('id', currentUserId);
   }catch(err){
     console.error('Save failed', err);
     showToast('Could not save your changes — check your connection.');
