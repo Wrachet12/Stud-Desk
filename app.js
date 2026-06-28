@@ -1,5 +1,5 @@
 /* ===================== AUTH (real accounts via Supabase) ===================== */
-// Fill in your project's URL + anon key in js/config.js — see README.md.
+// Fill in your project's URL + anon key in config.js — see below.
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentUserId = null;
@@ -74,7 +74,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e)=>{
   submitBtn.disabled = true; submitBtn.textContent = 'Logging in…';
   const { data: signInData, error } = await sb.auth.signInWithPassword({ email, password: pw });
   submitBtn.disabled = false; submitBtn.textContent = 'Log in';
-  if(error){ errEl.textContent = 'Incorrect email or password.'; return; }
+  if(error){ errEl.textContent = error.message; return; }
   await loadProfileAndEnter(signInData.user.id, signInData.user.email);
 });
 
