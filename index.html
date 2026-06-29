@@ -3,381 +3,81 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Stud Desk — Plan, Time, Note, Learn</title>
+<title>Stud Desk — Plan, Time, Note, and Master Your Coursework</title>
+<meta name="description" content="Stud Desk is a free student time-management app: a deadline-splitting planner, a Pomodoro timer, paginated notebooks, flashcards, a mind map, a Leitner box system, and a question log with practice tests — all in one place.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./styles.css">
+<link rel="stylesheet" href="styles.css">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5483196886768719"
+     crossorigin="anonymous"></script>
 </head>
-<body>
+<body class="lp-body">
 
-<!-- ================= AUTH OVERLAY ================= -->
-<div id="authOverlay">
-  <div class="auth-card">
-    <div class="auth-brand"><span class="lamp"></span> Stud Desk</div>
-    <div class="auth-sub">Plan it, time it, note it, learn it.</div>
-    <div class="auth-tabs">
-      <button class="auth-tab active" id="showLogin">Log in</button>
-      <button class="auth-tab" id="showSignup">Sign up</button>
-    </div>
-
-    <form class="auth-form" id="loginForm">
-      <input type="email" id="loginEmail" placeholder="Email" autocomplete="username" required>
-      <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password" required>
-      <div class="auth-error" id="loginError"></div>
-      <button class="btn amber" type="submit">Log in</button>
-    </form>
-
-    <form class="auth-form" id="signupForm" style="display:none;">
-      <input type="text" id="signupName" placeholder="First name" required>
-      <input type="email" id="signupEmail" placeholder="Email" autocomplete="username" required>
-      <input type="password" id="signupPassword" placeholder="Password (min 8 characters)" autocomplete="new-password" required>
-      <div class="auth-strength" id="signupStrength"></div>
-      <input type="password" id="signupConfirm" placeholder="Confirm password" autocomplete="new-password" required>
-      <div class="auth-error" id="signupError"></div>
-      <button class="btn amber" type="submit">Create account</button>
-    </form>
-
-    <div class="lock-note">🔒 Your account is protected by Supabase Auth (industry-standard hashing, never plain text), and your planner, notes, mind maps, flashcards, and streak are saved to the cloud — so they're there when you log back in from any device.</div>
-  </div>
-</div>
-
-<!-- ================= APP SHELL ================= -->
-<div id="appShell" style="display:none;">
-
-<div class="topbar">
+<header class="lp-nav">
   <div class="brand"><span class="lamp"></span> Stud Desk</div>
-  <div class="stats">
-    <div class="level-pill">Lv <span id="levelNum">1</span></div>
-    <div class="xpbar-wrap"><div class="xpbar-fill" id="xpBar"></div></div>
-    <div class="stat-block mono"><span id="xpNum">0</span> XP</div>
-    <div class="streak">🔥 <span id="streakNum">0</span></div>
-    <div class="userbox">
-      <span id="userName"></span>
-      <button id="logoutBtn">Log out</button>
-    </div>
+  <div class="lp-nav-links">
+    <a href="privacy.html">Privacy</a>
+    <a href="app.html" class="btn ghost small">Log in</a>
+    <a href="app.html#signup" class="btn amber small">Sign up free</a>
   </div>
-</div>
+</header>
 
-<nav class="tabs">
-  <button class="tab active" data-tab="study">📚 Study</button>
-  <button class="tab" data-tab="planner">🗓 Planner</button>
-  <button class="tab" data-tab="timer">⏱ Timer</button>
-  <button class="tab" data-tab="notes">📓 Notes</button>
-  <button class="tab" data-tab="qlog">❓ Question Log</button>
-</nav>
-
-<main>
-
-<!-- ================= STUDY TAB ================= -->
-<section id="study" class="panel active">
-
-  <div class="card">
-    <h2>Mind map — one-pager for a topic</h2>
-    <p style="font-size:.85rem;color:#555;">Double-click anywhere to drop a bubble. Drag bubbles around, click the text to edit it. Turn on <strong>Connect</strong>, then click two bubbles in a row to draw a line between them; click the same pair again to remove that line.</p>
-    <div class="pillgroup">
-      <button class="btn small ghost" id="addBubbleBtn">+ Add bubble</button>
-      <button class="btn small ghost" id="connectModeBtn">🔗 Connect</button>
-      <button class="btn small ghost" id="clearMapBtn">Clear map</button>
-    </div>
-    <div id="mindmapCanvas">
-      <svg class="map-lines" id="mapLines"></svg>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>Leitner box system — hardest → easiest</h2>
-    <p style="font-size:.85rem;color:#555;">Add a concept card to whichever box fits. Reviews only unlock once a card's interval has actually passed — that's what keeps the XP honest.</p>
-    <div class="row">
-      <div style="flex:3"><input id="leitnerInput" placeholder="e.g. Krebs cycle steps"></div>
-      <div style="flex:1">
-        <select id="leitnerBoxSelect">
-          <option value="1">Box 1 (daily)</option>
-          <option value="2">Box 2 (every 2 days)</option>
-          <option value="3">Box 3 (every 4 days)</option>
-          <option value="4">Box 4 (every 9 days)</option>
-          <option value="5">Box 5 (every 14 days)</option>
-        </select>
-      </div>
-      <div style="flex:1"><button class="btn amber" id="leitnerAddBtn" style="width:100%;margin-top:0">Add card</button></div>
-    </div>
-    <div class="boxes-wrap" id="boxesWrap"></div>
-  </div>
-
-  <div class="card">
-    <h2>Flashcards</h2>
-    <p style="font-size:.85rem;color:#555;">5 stacks, up to 150 cards each. Rename a stack to match a subject, then add cards and flip through them.</p>
-    <div class="subject-tabs" id="flashStackTabs"></div>
-    <div class="row" style="align-items:flex-end;">
-      <div style="flex:2"><label>Stack name</label><input id="flashStackName" placeholder="Subject name"></div>
-      <div style="flex:1"><span class="mono" id="flashCount" style="font-size:.8rem;color:#777;"></span></div>
-    </div>
-    <div class="row">
-      <div><label>Front (question)</label><textarea id="flashFront" style="min-height:60px;"></textarea></div>
-      <div><label>Back (answer)</label><textarea id="flashBack" style="min-height:60px;"></textarea></div>
-    </div>
-    <button class="btn amber" id="flashAddBtn" style="margin-top:8px;">+ Add card</button>
-    <div id="flashViewer" style="margin-top:16px;"></div>
-  </div>
-
-  <div class="card">
-    <h3>Feynman Technique</h3>
-    <p style="font-size:.85rem;color:#555;">Explain a concept so simply a beginner could follow it. The gaps you find are exactly what to restudy. Use the worksheet in the <strong>Notes</strong> tab.</p>
-    <h3>Parkinson's Law</h3>
-    <p style="font-size:.85rem;color:#555;">Work expands to fill the time you give it. In the <strong>Planner</strong> tab you can tighten a deadline on purpose to create healthy urgency.</p>
-    <h3>Pomodoro Technique</h3>
-    <p style="font-size:.85rem;color:#555;">Short focused sprints followed by a short break keep attention fresh. Run it from the <strong>Timer</strong> tab.</p>
+<section class="lp-hero">
+  <h1>One place to plan, time, note, and master your coursework.</h1>
+  <p class="lp-sub">Stud Desk turns your assignments into a daily plan, your study sessions into focused sprints, and your weak spots into a log you actually learn from.</p>
+  <div class="lp-cta-row">
+    <a href="app.html#signup" class="btn amber">Get started — it's free</a>
+    <a href="app.html" class="btn ghost">I already have an account</a>
   </div>
 </section>
 
-<!-- ================= PLANNER TAB ================= -->
-<section id="planner" class="panel">
+<section class="lp-features">
+  <h2 class="lp-section-title">Everything a student actually needs, in five places</h2>
 
-  <div class="card">
-    <h2>Add an assignment</h2>
-    <div class="row">
-      <div>
-        <label>Step description (not the end goal)</label>
-        <input id="taskTitle" placeholder="e.g. Review chapter 3 vocabulary">
-      </div>
-      <div>
-        <label>Workload type</label>
-        <select id="taskType">
-          <option value="questions">Questions (worksheet)</option>
-          <option value="pages">Pages (reading)</option>
-          <option value="none">No quantity — just a deadline</option>
-        </select>
-      </div>
+  <div class="lp-feature-grid">
+    <div class="lp-feature-card">
+      <div class="lp-feature-icon">📚</div>
+      <h3>Study</h3>
+      <p>Draggable mind maps with connector lines, a 5-box Leitner spaced-repetition system with real review timers, and 5 flashcard stacks of up to 150 cards each.</p>
     </div>
-    <div class="row">
-      <div><label>Total amount</label><input id="taskQty" type="number" min="1" value="20"></div>
-      <div><label>Start date</label><input id="taskStart" type="date"></div>
-      <div><label>Due date</label><input id="taskDue" type="date"></div>
+    <div class="lp-feature-card">
+      <div class="lp-feature-icon">🗓</div>
+      <h3>Planner</h3>
+      <p>Give it a page count or a question count and a due date — it splits the work into a daily target automatically, and flags vague goals before they become risky deadlines.</p>
     </div>
-    <div class="row" style="align-items:center;margin-top:6px;">
-      <div style="display:flex;align-items:center;gap:8px;flex:0;">
-        <input type="checkbox" id="parkCheck" style="width:auto;">
-        <label style="margin:0;" for="parkCheck">Tighten deadline (Parkinson's Law)</label>
-      </div>
+    <div class="lp-feature-card">
+      <div class="lp-feature-icon">⏱</div>
+      <h3>Timer</h3>
+      <p>A real Pomodoro timer with custom focus/break lengths, plus a 24-hour strip showing when you actually study best.</p>
     </div>
-    <div id="vagueWarning"></div>
-    <button class="btn amber" id="addTaskBtn" style="margin-top:10px;">Add to planner</button>
-    <div class="tip">Tip: write the next concrete step, not the finish line. "Study this topic for the test" is risky — break it into named steps like "Outline causes of WWI" or "Redo missed practice problems".</div>
-  </div>
-
-  <div class="card">
-    <h2>Your plan</h2>
-    <div class="pillgroup">
-      <button class="pill-toggle active rec" id="filterRec">Least → most flexible — Recommended</button>
-      <button class="pill-toggle risk" id="filterRisk">Most → least flexible — Risky</button>
+    <div class="lp-feature-card">
+      <div class="lp-feature-icon">📓</div>
+      <h3>Notes</h3>
+      <p>5 subject notebooks with up to 300 pages each, a Cornell-style formal layout, and a guided Feynman-technique worksheet.</p>
     </div>
-    <div id="taskList"></div>
-  </div>
-</section>
-
-<!-- ================= TIMER TAB ================= -->
-<section id="timer" class="panel">
-  <div class="card">
-    <h2>Pomodoro timer</h2>
-    <div class="timer-wrap">
-      <div>
-        <div class="timer-display">
-          <div class="time mono" id="timeDisplay">25:00</div>
-          <div class="mode" id="modeDisplay">Focus</div>
-        </div>
-        <div class="pillgroup" style="margin-top:14px;justify-content:center;">
-          <button class="btn green small" id="startBtn">Start</button>
-          <button class="btn ghost small" id="pauseBtn">Pause</button>
-          <button class="btn red small" id="resetBtn">Reset</button>
-        </div>
-        <p style="text-align:center;font-size:.8rem;color:#666;" id="sessionCounter">Session 0 of 4 before a long break</p>
-      </div>
-      <div style="flex:1;min-width:260px;">
-        <div class="row">
-          <div><label>Focus minutes</label><input id="workMin" type="number" value="25" min="1"></div>
-          <div><label>Short break</label><input id="breakMin" type="number" value="5" min="1"></div>
-          <div><label>Long break</label><input id="longBreakMin" type="number" value="15" min="1"></div>
-        </div>
-        <h3 style="margin-top:18px;">Best time-of-day to study</h3>
-        <div class="schedule-strip" id="scheduleStrip"></div>
-        <div class="legend">
-          <span><span class="dot" style="background:#9fd9af;"></span>Recommended (4–8 pm)</span>
-          <span><span class="dot" style="background:#ef9d99;"></span>Risky (4–7 am)</span>
-          <span><span class="dot" style="background:#e7e2cf;"></span>Other hours / 10am–2pm weekdays = weekends &amp; days off only</span>
-        </div>
-        <p id="scheduleNote" style="font-size:.85rem;margin-top:8px;font-weight:600;"></p>
-      </div>
+    <div class="lp-feature-card">
+      <div class="lp-feature-icon">❓</div>
+      <h3>Question Log</h3>
+      <p>Build a question bank by subject and term, generate practice tests from it, and auto-log every mistake with the correct answer side-by-side so you can write down why you missed it.</p>
+    </div>
+    <div class="lp-feature-card">
+      <div class="lp-feature-icon">🔥</div>
+      <h3>Stay consistent</h3>
+      <p>XP, levels, and a streak counter that actually requires real review intervals to pass — no farming it for easy points.</p>
     </div>
   </div>
 </section>
 
-<!-- ================= NOTES TAB ================= -->
-<section id="notes" class="panel">
-  <div class="subtabs">
-    <button class="subtab active" data-sub="basic">Basic notes</button>
-    <button class="subtab" data-sub="formal">Formal notes (Cornell)</button>
-    <button class="subtab" data-sub="feynman">Feynman worksheet</button>
-  </div>
-
-  <div id="basic" class="subpanel card">
-    <h2>Basic notes</h2>
-    <p style="font-size:.85rem;color:#555;">5 separate notebooks — rename each to a subject. Every notebook holds up to 300 pages.</p>
-    <div class="subject-tabs" id="basicSubjectTabs"></div>
-    <div class="row" style="align-items:flex-end;">
-      <div style="flex:2"><label>Subject name</label><input id="basicSubjectName" placeholder="Subject name"></div>
-      <div style="flex:1">
-        <label>Page</label>
-        <div class="page-nav">
-          <button class="btn small ghost" id="basicPrevPage">‹</button>
-          <input type="number" id="basicPageNum" min="1" max="300" value="1">
-          <span class="mono" style="font-size:.8rem;color:#777;">/ 300</span>
-          <button class="btn small ghost" id="basicNextPage">›</button>
-        </div>
-      </div>
-    </div>
-    <div class="note-controls">
-      <div><label>Font</label>
-        <select id="basicFont">
-          <option value="Inter">Inter</option>
-          <option value="'Fraunces',serif">Fraunces (serif)</option>
-          <option value="'JetBrains Mono',monospace">JetBrains Mono</option>
-          <option value="Georgia,serif">Georgia</option>
-          <option value="'Comic Sans MS',cursive">Comic Sans</option>
-        </select>
-      </div>
-      <div><label>Size</label>
-        <select id="basicSize"><option>14</option><option selected>16</option><option>18</option><option>22</option><option>26</option></select>
-      </div>
-    </div>
-    <textarea id="basicNote" placeholder="Write freely here..."></textarea>
-  </div>
-
-  <div id="formal" class="subpanel card" style="display:none;">
-    <h2>Formal notes — Cornell layout</h2>
-    <p style="font-size:.85rem;color:#555;">5 separate notebooks — rename each to a subject. Every notebook holds up to 300 pages.</p>
-    <div class="subject-tabs" id="formalSubjectTabs"></div>
-    <div class="row" style="align-items:flex-end;">
-      <div style="flex:2"><label>Subject name</label><input id="formalSubjectName" placeholder="Subject name"></div>
-      <div style="flex:1">
-        <label>Page</label>
-        <div class="page-nav">
-          <button class="btn small ghost" id="formalPrevPage">‹</button>
-          <input type="number" id="formalPageNum" min="1" max="300" value="1">
-          <span class="mono" style="font-size:.8rem;color:#777;">/ 300</span>
-          <button class="btn small ghost" id="formalNextPage">›</button>
-        </div>
-      </div>
-    </div>
-    <div class="note-controls">
-      <div><label>Font</label>
-        <select id="formalFont">
-          <option value="Inter">Inter</option>
-          <option value="'Fraunces',serif">Fraunces (serif)</option>
-          <option value="'JetBrains Mono',monospace">JetBrains Mono</option>
-          <option value="Georgia,serif">Georgia</option>
-        </select>
-      </div>
-      <div><label>Size</label>
-        <select id="formalSize"><option>14</option><option selected>16</option><option>18</option><option>22</option></select>
-      </div>
-    </div>
-    <div class="formal-grid">
-      <textarea id="formalTerms" placeholder="Key terms &amp; definitions"></textarea>
-      <textarea id="formalNotes" placeholder="Main notes go here..."></textarea>
-      <textarea id="formalSummary" placeholder="Summary — in your own words, what's the big idea?"></textarea>
-    </div>
-  </div>
-
-  <div id="feynman" class="subpanel card" style="display:none;">
-    <h2>Feynman technique worksheet</h2>
-    <p style="font-size:.85rem;color:#555;">Capped at 5 logged sessions a day to keep this about real practice, not XP farming. Once you hit 5, it unlocks again at 2:00 PM the next day.</p>
-    <div class="feynman-grid">
-      <textarea id="fConcept" placeholder="1. Concept I'm learning"></textarea>
-      <textarea id="fExplain" placeholder="2. Explain it like I'm teaching a 10-year-old"></textarea>
-      <textarea id="fGaps" placeholder="3. Where did I get stuck or use a fuzzy word?"></textarea>
-      <textarea id="fSimplify" placeholder="4. Simplify and find an analogy"></textarea>
-    </div>
-    <div id="feynmanStatus" class="tip" style="margin-top:10px;"></div>
-    <button class="btn amber" id="feynmanDoneBtn" style="margin-top:8px;">Mark practice complete (+15 XP)</button>
-  </div>
+<section class="lp-final-cta">
+  <h2>Your next study session is one signup away.</h2>
+  <a href="app.html#signup" class="btn amber">Create your free account</a>
 </section>
 
-<!-- ================= QUESTION LOG TAB ================= -->
-<section id="qlog" class="panel">
-  <div class="subtabs">
-    <button class="qsubtab active" data-qsub="qbank">Question Bank</button>
-    <button class="qsubtab" data-qsub="qtests">Practice Tests</button>
-    <button class="qsubtab" data-qsub="qmistakes">Mistake Log</button>
-  </div>
+<footer class="lp-footer">
+  <span>© <span id="lpYear"></span> Stud Desk</span>
+  <a href="privacy.html">Privacy Policy</a>
+</footer>
 
-  <div id="qbank" class="qsubpanel card">
-    <h2>Question bank</h2>
-    <p style="font-size:.85rem;color:#555;">5 subjects, up to 200 questions each, split into 4 terms of 50 questions.</p>
-    <div class="subject-tabs" id="qSubjectTabs"></div>
-    <div class="row" style="align-items:flex-end;">
-      <div style="flex:2"><label>Subject name</label><input id="qSubjectName" placeholder="Subject name"></div>
-      <div style="flex:2"><label>Term</label><div class="subject-tabs" id="qTermTabs"></div></div>
-    </div>
-    <div class="tip" id="qCountTip"></div>
-
-    <h3 style="margin-top:18px;">Add / edit a question</h3>
-    <div class="row">
-      <div style="flex:2"><label>Question prompt</label><textarea id="qPrompt" style="min-height:70px;"></textarea></div>
-      <div>
-        <label>Type</label>
-        <select id="qType">
-          <option value="frq">Free response (FRQ)</option>
-          <option value="mcq">Multiple choice (A–D)</option>
-          <option value="tf">True / False</option>
-        </select>
-      </div>
-    </div>
-    <div id="qTypeFields"></div>
-    <div class="row">
-      <div><label>Category</label><input id="qCategory" placeholder="e.g. Algebra, Cell Biology"></div>
-      <div><label>Difficulty (1–10)</label><input id="qDifficulty" type="number" min="1" max="10" value="5"></div>
-      <div><label>Image (optional)</label><input id="qImageInput" type="file" accept="image/*"></div>
-    </div>
-    <div id="qImagePreview"></div>
-    <div class="pillgroup">
-      <button class="btn amber" id="qAddBtn">+ Add question</button>
-      <button class="btn ghost" id="qCancelEditBtn" style="display:none;">Cancel edit</button>
-    </div>
-
-    <h3 style="margin-top:20px;">Questions in this term</h3>
-    <div id="qList"></div>
-  </div>
-
-  <div id="qtests" class="qsubpanel card" style="display:none;">
-    <h2>Practice tests</h2>
-    <p style="font-size:.85rem;color:#555;">Build a test from everything currently in a subject's term, then take it. Name and edit it any time.</p>
-    <div class="row">
-      <div><label>Test name</label><input id="ptName" placeholder="e.g. Midterm review"></div>
-      <div><label>Subject</label><select id="ptSubject"></select></div>
-      <div><label>Term</label>
-        <select id="ptTerm">
-          <option value="1">Term 1</option><option value="2">Term 2</option><option value="3">Term 3</option><option value="4">Term 4</option>
-        </select>
-      </div>
-    </div>
-    <button class="btn amber" id="ptCreateBtn" style="margin-top:6px;">+ Create practice test</button>
-    <div id="ptList" style="margin-top:16px;"></div>
-    <div id="ptRunner" style="margin-top:16px;"></div>
-  </div>
-
-  <div id="qmistakes" class="qsubpanel card" style="display:none;">
-    <h2>Mistake log</h2>
-    <p style="font-size:.85rem;color:#555;">Auto-filled whenever you miss a question on a practice test. Jot down why, so the same mistake doesn't happen twice.</p>
-    <div id="mistakeList"></div>
-  </div>
-</section>
-
-</main>
-</div><!-- /appShell -->
-
-<div id="toastContainer"></div>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="./config.js"></script>
-<script src="./app.js"></script>
+<script>document.getElementById('lpYear').textContent = new Date().getFullYear();</script>
 </body>
 </html>

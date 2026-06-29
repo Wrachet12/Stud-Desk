@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy Policy — Stud Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5483196886768719"
+     crossorigin="anonymous"></script>
+</head>
+<body class="lp-body">
+
+<header class="lp-nav">
+  <a href="index.html" class="brand" style="text-decoration:none;color:var(--text);"><span class="lamp"></span> Stud Desk</a>
+  <div class="lp-nav-links">
+    <a href="app.html" class="btn ghost small">Log in</a>
+  </div>
+</header>
+
+<section class="lp-legal">
+  <h1>Privacy Policy</h1>
+  <p class="lp-updated">Last updated: <span id="lpDate"></span></p>
+
+  <p>This page explains what information Stud Desk collects, how it's used, and the choices you have. Stud Desk is a small, independently run student tool — this policy is written in plain language, but it isn't a substitute for legal advice.</p>
+
+  <h2>What we collect</h2>
+  <ul>
+    <li><strong>Account information.</strong> When you sign up, we collect your name, email address, and password. Your password is never stored as readable text — it's handled by our authentication provider, Supabase, using industry-standard hashing.</li>
+    <li><strong>The content you create.</strong> Planner tasks, notes, mind maps, flashcards, Leitner cards, question bank entries, practice test results, and your XP/streak data are stored so they're there the next time you log in, from any device.</li>
+    <li><strong>Images you upload.</strong> If you attach an image to a question in the Question Log, it's stored along with your account data.</li>
+  </ul>
+
+  <h2>How we store it</h2>
+  <p>Your account and data are stored with Supabase, a third-party database and authentication provider. Access to your data is restricted so that only you can read or modify your own account's information.</p>
+
+  <h2>Cookies and advertising</h2>
+  <p>This site may show ads served by Google AdSense. Google and its partners may use cookies or similar technologies to serve ads based on your prior visits to this or other websites. You can opt out of personalized advertising by visiting <a href="https://adssettings.google.com" target="_blank" rel="noopener">Google's Ads Settings</a>, or by visiting <a href="https://www.aboutads.info/choices" target="_blank" rel="noopener">www.aboutads.info</a>.</p>
+
+  <h2>What we don't do</h2>
+  <ul>
+    <li>We don't sell your personal information.</li>
+    <li>We don't read or use the content of your notes, planner, or question bank for anything other than displaying it back to you.</li>
+  </ul>
+
+  <h2>Children's privacy</h2>
+  <p>Stud Desk is intended for students generally, but is not specifically directed at children under 13, and we do not knowingly collect personal information from children under 13 without appropriate consent. If you believe a child has created an account without appropriate consent, contact us and we'll remove it.</p>
+
+  <h2>Your choices</h2>
+  <p>You can edit or delete the content you've created at any time from within the app. To delete your account entirely, contact us using the information below and we'll remove your account and associated data.</p>
+
+  <h2>Changes to this policy</h2>
+  <p>If this policy changes, we'll update the date at the top of this page.</p>
+
+  <h2>Contact</h2>
+  <p>Questions about this policy can be sent to: <em>[add your contact email here]</em></p>
+</section>
+
+<footer class="lp-footer">
+  <span>© <span id="lpYear"></span> Stud Desk</span>
+  <a href="index.html">Home</a>
+</footer>
+
+<script>
+  document.getElementById('lpYear').textContent = new Date().getFullYear();
+  document.getElementById('lpDate').textContent = new Date().toLocaleDateString('en-US', {year:'numeric', month:'long', day:'numeric'});
+</script>
+</body>
+</html>
