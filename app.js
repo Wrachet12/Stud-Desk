@@ -20,7 +20,24 @@ function newUserData(){
       subjects: [1,2,3,4,5].map(i => ({ name: `Subject ${i}`, terms: {1:[],2:[],3:[],4:[]} })),
       questionSeq:0, practiceTests: [], testSeq:0, mistakes: [], mistakeSeq:0
     },
-    friends: [], friendRequests: [], darkMode: false, displayName: ''
+    friends: [], friendRequests: [], darkMode: false, displayName: '',
+    // activity log powers the Weekly Recap — lightweight events, trimmed to
+    // the last 60 days on save so it never grows unbounded
+    activityLog: [],
+    lifetimeStats: { focusSessions:0, leitnerReviews:0, flashcards:0, testsCompleted:0, notesEdited:0, tasksCompleted:0 },
+    achievements: [], // ids of unlocked achievements
+    ambientSound: 'none',
+    schedule: {
+      periods: [], // up to 10, each {name, subject} — added one at a time
+      bells: [] // up to 9 "HH:MM" bell times, in order — added one at a time
+    },
+    gradeTracker: {
+      subjects: [1,2,3,4,5].map(i => ({
+        name: `Subject ${i}`,
+        weights: { major: 70, quiz: 30 },
+        terms: { 1:{major:[],quiz:[]}, 2:{major:[],quiz:[]}, 3:{major:[],quiz:[]}, 4:{major:[],quiz:[]} }
+      }))
+    }
   };
 }
 
@@ -188,6 +205,44 @@ function maybeNotify(title, body){
 function encourage(){ showToast(ENCOURAGE[Math.floor(Math.random()*ENCOURAGE.length)]); }
 
 /* ===================== GAMIFICATION ===================== */
+function logActivity(type, amount=1){
+  if(!data) return;
+  if(!data.activityLog) data.activityLog=[];
+  data.activityLog.push({ date: todayStr(), type, amount, ts: Date.now() });
+  // keep this from growing forever — 60 days of history is plenty for a
+  // weekly recap; lifetimeStats below (never trimmed) covers achievements
+  const cutoff = addDays(todayStr(), -60);
+  data.activityLog = data.activityLog.filter(e=>e.date >= cutoff);
+  if(!data.lifetimeStats) data.lifetimeStats = { focusSessions:0, leitnerReviews:0, flashcards:0, testsCompleted:0, notesEdited:0, tasksCompleted:0 };
+  if(data.lifetimeStats[type]!==undefined) data.lifetimeStats[type] += amount;
+  checkAchievements();
+}
+const ACHIEVEMENT_DEFS = [
+  { id:'streak_3', label:'On a Roll', desc:'3-day streak', check:d=>d.streak>=3 },
+  { id:'streak_7', label:'Week Warrior', desc:'7-day streak', check:d=>d.streak>=7 },
+  { id:'streak_30', label:'Unstoppable', desc:'30-day streak', check:d=>d.streak>=30 },
+  { id:'level_5', label:'Level 5', desc:'Reached level 5', check:d=>d.level>=5 },
+  { id:'level_10', label:'Level 10', desc:'Reached level 10', check:d=>d.level>=10 },
+  { id:'level_25', label:'Level 25', desc:'Reached level 25', check:d=>d.level>=25 },
+  { id:'first_focus', label:'First Focus Session', desc:'Completed your first Pomodoro session', check:d=>(d.lifetimeStats?.focusSessions||0)>=1 },
+  { id:'ten_focus', label:'Focus Finisher', desc:'Completed 10 focus sessions', check:d=>(d.lifetimeStats?.focusSessions||0)>=10 },
+  { id:'fifty_focus', label:'Deep Work', desc:'Completed 50 focus sessions', check:d=>(d.lifetimeStats?.focusSessions||0)>=50 },
+  { id:'fifty_leitner', label:'Spaced Repetition Pro', desc:'Completed 50 Leitner reviews', check:d=>(d.lifetimeStats?.leitnerReviews||0)>=50 },
+  { id:'hundred_flashcards', label:'Flashcard Master', desc:'Made 100 flashcards', check:d=>(d.lifetimeStats?.flashcards||0)>=100 },
+  { id:'first_test', label:'First Practice Test', desc:'Completed your first practice test', check:d=>(d.lifetimeStats?.testsCompleted||0)>=1 },
+  { id:'ten_tests', label:'Test Veteran', desc:'Completed 10 practice tests', check:d=>(d.lifetimeStats?.testsCompleted||0)>=10 },
+  { id:'fifty_notes', label:'Note Taker', desc:'Edited notes 50 times', check:d=>(d.lifetimeStats?.notesEdited||0)>=50 },
+  { id:'hundred_tasks', label:'Task Crusher', desc:'Completed 100 planner tasks', check:d=>(d.lifetimeStats?.tasksCompleted||0)>=100 },
+];
+function checkAchievements(){
+  if(!data.achievements) data.achievements=[];
+  ACHIEVEMENT_DEFS.forEach(a=>{
+    if(!data.achievements.includes(a.id) && a.check(data)){
+      data.achievements.push(a.id);
+      showToast(`🏆 Achievement unlocked: ${a.label}`);
+    }
+  });
+}
 function awardXP(amount, withEncouragement){
   if(!data) return;
   data.xp += amount;
@@ -342,7 +397,7 @@ function toggleDay(id, day){
   const t = data.tasks.find(t=>t.id===id);
   if(!t) return;
   const idx = t.doneDays.indexOf(day);
-  if(idx>-1){ t.doneDays.splice(idx,1); scheduleSave(); } else { t.doneDays.push(day); awardXP(8,true); }
+  if(idx>-1){ t.doneDays.splice(idx,1); scheduleSave(); } else { t.doneDays.push(day); awardXP(8,true); logActivity('tasksCompleted',1); }
   renderTasks();
 }
 
@@ -387,6 +442,7 @@ function tick(){
     if(mode==='Focus'){
       sessionCount++;
       awardXP(10,false);
+      logActivity('focusSessions', Math.round(workSec/60));
       maybeNotify('Focus session complete', "Nice — time for a breather.");
       showToast('Focus session done! Take a short break.');
       if(sessionCount % 4 === 0){ mode='Long break'; remaining=longBreakSec; } else { mode='Break'; remaining=breakSec; }
@@ -398,6 +454,171 @@ function tick(){
     }
   }
   renderTimer();
+}
+
+/* ===================== AMBIENT SOUND (generated, no files/cost) ===================== */
+let audioCtx = null, ambientNodes = null;
+function makeNoiseBuffer(ctx, colorFn){
+  const bufferSize = 2*ctx.sampleRate;
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  colorFn(buffer.getChannelData(0));
+  return buffer;
+}
+function stopAmbient(){
+  if(ambientNodes){
+    ambientNodes.forEach(n=>{ try{ if(n.stop) n.stop(); }catch(e){} try{ n.disconnect(); }catch(e){} });
+    ambientNodes = null;
+  }
+}
+function startAmbient(type, volume){
+  stopAmbient();
+  if(type==='none') return;
+  if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+  const ctx = audioCtx;
+  if(ctx.state==='suspended') ctx.resume();
+  const gainNode = ctx.createGain();
+  gainNode.gain.value = volume;
+  gainNode.connect(ctx.destination);
+  const nodes = [gainNode];
+  const whiteFill = out=>{ for(let i=0;i<out.length;i++) out[i]=Math.random()*2-1; };
+
+  if(type==='white'){
+    const src = ctx.createBufferSource(); src.buffer = makeNoiseBuffer(ctx, whiteFill); src.loop=true;
+    src.connect(gainNode); src.start(); nodes.push(src);
+  } else if(type==='pink'){
+    let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
+    const buffer = makeNoiseBuffer(ctx, out=>{
+      for(let i=0;i<out.length;i++){
+        const white = Math.random()*2-1;
+        b0=0.99886*b0+white*0.0555179; b1=0.99332*b1+white*0.0750759; b2=0.96900*b2+white*0.1538520;
+        b3=0.86650*b3+white*0.3104856; b4=0.55000*b4+white*0.5329522; b5=-0.7616*b5-white*0.0168980;
+        out[i]=(b0+b1+b2+b3+b4+b5+b6+white*0.5362)*0.11; b6=white*0.115926;
+      }
+    });
+    const src = ctx.createBufferSource(); src.buffer=buffer; src.loop=true;
+    src.connect(gainNode); src.start(); nodes.push(src);
+  } else if(type==='brown'){
+    let lastOut=0;
+    const buffer = makeNoiseBuffer(ctx, out=>{
+      for(let i=0;i<out.length;i++){
+        const white = Math.random()*2-1;
+        out[i] = (lastOut + 0.02*white)/1.02; lastOut = out[i]; out[i] *= 3.5;
+      }
+    });
+    const src = ctx.createBufferSource(); src.buffer=buffer; src.loop=true;
+    src.connect(gainNode); src.start(); nodes.push(src);
+  } else if(type==='rain'){
+    const src = ctx.createBufferSource(); src.buffer = makeNoiseBuffer(ctx, whiteFill); src.loop=true;
+    const filter = ctx.createBiquadFilter(); filter.type='bandpass'; filter.frequency.value=3000; filter.Q.value=0.6;
+    const lfo = ctx.createOscillator(); lfo.frequency.value=0.15;
+    const lfoGain = ctx.createGain(); lfoGain.gain.value=800;
+    lfo.connect(lfoGain); lfoGain.connect(filter.frequency); lfo.start();
+    src.connect(filter); filter.connect(gainNode); src.start();
+    nodes.push(src, filter, lfo, lfoGain);
+  } else if(type==='ocean'){
+    const src = ctx.createBufferSource(); src.buffer = makeNoiseBuffer(ctx, whiteFill); src.loop=true;
+    const filter = ctx.createBiquadFilter(); filter.type='lowpass'; filter.frequency.value=500;
+    const waveGain = ctx.createGain(); waveGain.gain.value=0.7;
+    const lfo = ctx.createOscillator(); lfo.frequency.value=0.1;
+    const lfoGain = ctx.createGain(); lfoGain.gain.value=0.3;
+    lfo.connect(lfoGain); lfoGain.connect(waveGain.gain); lfo.start();
+    src.connect(filter); filter.connect(waveGain); waveGain.connect(gainNode); src.start();
+    nodes.push(src, filter, lfo, lfoGain, waveGain);
+  }
+  ambientNodes = nodes;
+}
+document.getElementById('ambientSelect').addEventListener('change', (e)=>{
+  const vol = (parseInt(document.getElementById('ambientVolume').value)||50)/100;
+  startAmbient(e.target.value, vol);
+  if(data){ data.ambientSound = e.target.value; scheduleSave(); }
+});
+document.getElementById('ambientVolume').addEventListener('input', (e)=>{
+  const vol = (parseInt(e.target.value)||50)/100;
+  if(ambientNodes && ambientNodes[0]) ambientNodes[0].gain.value = vol;
+});
+
+/* ===================== CLASS BELL SCHEDULE ===================== */
+function renderPeriodEditRows(){
+  const wrap = document.getElementById('periodEditRows');
+  const periods = data.schedule.periods;
+  wrap.innerHTML = periods.map((p,i)=>`
+    <div class="row" style="align-items:center;margin-bottom:6px;">
+      <div style="flex:0 0 90px;font-weight:600;">Period ${i+1}</div>
+      <div style="flex:2"><input data-period-i="${i}" class="periodSubjectInput" placeholder="e.g. Algebra II, Lunch, Free period" value="${(p.subject||'').replace(/"/g,'&quot;')}"></div>
+      <div style="flex:0 0 auto;"><button class="btn small red" onclick="removePeriod(${i})">Remove</button></div>
+    </div>`).join('') || '<p style="color:#999;font-size:.82rem;">No periods added yet.</p>';
+  document.getElementById('addPeriodBtn').disabled = periods.length>=10;
+  wrap.querySelectorAll('.periodSubjectInput').forEach(inp=>{
+    inp.addEventListener('input', (e)=>{
+      data.schedule.periods[parseInt(e.target.dataset.periodI)].subject = e.target.value;
+      scheduleSave();
+      updateBellStatus();
+    });
+  });
+}
+function removePeriod(i){ data.schedule.periods.splice(i,1); renderPeriodEditRows(); scheduleSave(); updateBellStatus(); }
+document.getElementById('addPeriodBtn').addEventListener('click', ()=>{
+  if(data.schedule.periods.length>=10){ showToast('Max 10 periods.'); return; }
+  data.schedule.periods.push({ name:`Period ${data.schedule.periods.length+1}`, subject:'' });
+  renderPeriodEditRows(); scheduleSave();
+});
+function renderBellEditRows(){
+  const wrap = document.getElementById('bellEditRows');
+  const bells = data.schedule.bells;
+  wrap.innerHTML = bells.map((b,i)=>`
+    <div class="row" style="align-items:center;margin-bottom:6px;">
+      <div style="flex:0 0 90px;font-weight:600;">Bell ${i+1}</div>
+      <div style="flex:1"><input type="time" data-bell-i="${i}" class="bellTimeInput" value="${b}"></div>
+      <div style="flex:0 0 auto;"><button class="btn small red" onclick="removeBell(${i})">Remove</button></div>
+    </div>`).join('') || '<p style="color:#999;font-size:.82rem;">No bell times added yet.</p>';
+  document.getElementById('addBellBtn').disabled = bells.length>=9;
+  wrap.querySelectorAll('.bellTimeInput').forEach(inp=>{
+    inp.addEventListener('input', (e)=>{
+      data.schedule.bells[parseInt(e.target.dataset.bellI)] = e.target.value;
+      data.schedule.bells.sort();
+      renderBellEditRows(); scheduleSave(); updateBellStatus();
+    });
+  });
+}
+function removeBell(i){ data.schedule.bells.splice(i,1); renderBellEditRows(); scheduleSave(); updateBellStatus(); }
+document.getElementById('addBellBtn').addEventListener('click', ()=>{
+  if(data.schedule.bells.length>=9){ showToast('Max 9 bell times.'); return; }
+  data.schedule.bells.push('08:00');
+  data.schedule.bells.sort();
+  renderBellEditRows(); scheduleSave();
+});
+function timeStrToMinutes(t){ const [h,m]=t.split(':').map(Number); return h*60+m; }
+function updateBellStatus(){
+  const el = document.getElementById('bellNowStatus');
+  if(!el || !data) return;
+  const bells = (data.schedule.bells||[]).slice().sort();
+  const periods = data.schedule.periods||[];
+  if(bells.length===0 || periods.length===0){
+    el.textContent = "Set up your periods and bell times below to see what's next.";
+    return;
+  }
+  const nowMin = new Date().getHours()*60 + new Date().getMinutes();
+  const bellMins = bells.map(timeStrToMinutes);
+  let idx = bellMins.findIndex(bm => nowMin < bm);
+  if(idx === -1) idx = bellMins.length;
+  if(idx >= periods.length){
+    el.textContent = "School's out for the day — good time for a focus session or flashcard review.";
+    return;
+  }
+  const period = periods[idx];
+  const label = period.subject ? `Period ${idx+1} (${period.subject})` : `Period ${idx+1}`;
+  if(idx < bellMins.length){
+    el.textContent = `Currently: ${label} — ${bellMins[idx]-nowMin} min until the bell.`;
+  } else {
+    el.textContent = `Currently: ${label} (last period).`;
+  }
+}
+setInterval(updateBellStatus, 30000);
+function renderSchedule(){
+  renderPeriodEditRows();
+  renderBellEditRows();
+  updateBellStatus();
+  document.getElementById('ambientSelect').value = data.ambientSound || 'none';
 }
 function isWeekendOrOff(){ const d=new Date().getDay(); return d===0||d===6; }
 function buildSchedule(){
@@ -475,7 +696,7 @@ document.getElementById('basicNote').addEventListener('input', (e)=>{
   data.basicNotebooks[basicActiveSubject].pages[basicActivePage] = e.target.value;
   scheduleSave();
 });
-document.getElementById('basicNote').addEventListener('blur', (e)=>{ if(e.target.value.trim()) awardXP(3,false); });
+document.getElementById('basicNote').addEventListener('blur', (e)=>{ if(e.target.value.trim()){ awardXP(3,false); logActivity('notesEdited',1); } });
 function goBasicPage(n){
   n = Math.max(1, Math.min(MAX_PAGES, n));
   basicActivePage = n;
@@ -516,7 +737,7 @@ document.getElementById('formalTerms').addEventListener('input', (e)=> saveForma
 document.getElementById('formalNotes').addEventListener('input', (e)=> saveFormalField('notes', e.target.value));
 document.getElementById('formalSummary').addEventListener('input', (e)=> saveFormalField('summary', e.target.value));
 ['formalTerms','formalNotes','formalSummary'].forEach(id=>{
-  document.getElementById(id).addEventListener('blur', (e)=>{ if(e.target.value.trim()) awardXP(3,false); });
+  document.getElementById(id).addEventListener('blur', (e)=>{ if(e.target.value.trim()){ awardXP(3,false); logActivity('notesEdited',1); } });
 });
 function goFormalPage(n){
   n = Math.max(1, Math.min(MAX_PAGES, n));
@@ -752,6 +973,7 @@ document.getElementById('flashAddBtn').addEventListener('click', ()=>{
   flashActiveCard = stack.cards.length-1; flashFlipped=false;
   renderFlashCount(); renderFlashViewer();
   awardXP(2,false);
+  logActivity('flashcards',1);
 });
 
 /* ===================== MINDMAP ===================== */
@@ -807,8 +1029,13 @@ function onBubblePointerDown(e, el, entry){
       el.classList.remove('selected'); connectFirst=null;
     } else {
       toggleConnection(connectFirst, entry.id);
-      canvas.querySelectorAll('.bubble.selected').forEach(b=>b.classList.remove('selected'));
-      connectFirst=null;
+      // BUGFIX: this used to clear connectFirst after every single
+      // connection, forcing you to re-click the same origin bubble before
+      // adding each new line — which made it look like a bubble could only
+      // ever have one connection. Now the origin bubble stays selected so
+      // you can click several other bubbles in a row and fan out multiple
+      // lines from it. Click the origin bubble again (or turn Connect off)
+      // when you're done with it.
     }
     return;
   }
@@ -896,6 +1123,9 @@ document.getElementById('connectModeBtn').addEventListener('click', (e)=>{
   connectMode = !connectMode;
   e.currentTarget.classList.toggle('active', connectMode);
   canvas.style.cursor = connectMode ? 'crosshair' : 'default';
+  if(connectMode){
+    showToast('Connect mode: click a bubble, then click others to link them all to it.');
+  }
   if(!connectMode && connectFirst!=null){
     canvas.querySelectorAll('.bubble.selected').forEach(b=>b.classList.remove('selected'));
     connectFirst=null;
@@ -973,6 +1203,7 @@ function reviewCard(id, correct){
       card.box = newBox; card.lastReviewTs = now; card.nextReviewTs = nextReviewEndOfDay(INTERVALS[newBox]);
       data.leitner[newBox].push(card);
       awardXP(5,true);
+      logActivity('leitnerReviews',1);
       break;
     }
   }
@@ -1255,6 +1486,7 @@ function ptComputeResults(){
   ptRunnerState.stage = 'results';
   ptRunnerState.score = correctCount;
   awardXP(correctCount*4 + ptRunnerState.questions.length, true);
+  logActivity('testsCompleted',1);
   renderMistakeList();
   scheduleSave();
 }
@@ -1331,6 +1563,53 @@ document.getElementById('accountBtn').addEventListener('click', ()=>{
   document.getElementById('accountModal').style.display='flex';
 });
 document.getElementById('closeSettingsBtn').addEventListener('click', ()=>{ document.getElementById('accountModal').style.display='none'; });
+
+/* ===================== WEEKLY RECAP ===================== */
+const RECAP_LABELS = {
+  focusSessions:{ label:'Focus sessions', unit:'min', icon:'⏱' },
+  leitnerReviews:{ label:'Leitner reviews', unit:'card(s)', icon:'📦' },
+  flashcards:{ label:'Flashcards made', unit:'card(s)', icon:'🗂' },
+  testsCompleted:{ label:'Practice tests taken', unit:'test(s)', icon:'📝' },
+  notesEdited:{ label:'Note edits', unit:'edit(s)', icon:'📓' },
+  tasksCompleted:{ label:'Planner tasks completed', unit:'task(s)', icon:'✅' },
+};
+function renderWeeklyRecap(){
+  const cutoff = addDays(todayStr(), -6); // last 7 days inclusive of today
+  const recent = (data.activityLog||[]).filter(e=>e.date>=cutoff);
+  const totals = {};
+  recent.forEach(e=>{ totals[e.type] = (totals[e.type]||0) + e.amount; });
+  const rows = Object.keys(RECAP_LABELS).map(key=>{
+    const info = RECAP_LABELS[key];
+    const count = totals[key]||0;
+    return `<div class="home-item">${info.icon} ${info.label}: <strong>${count} ${info.unit}</strong></div>`;
+  }).join('');
+  const focusMinutes = totals.focusSessions||0;
+  const hours = Math.floor(focusMinutes/60), mins = focusMinutes%60;
+  const summary = focusMinutes>0
+    ? `<p style="font-weight:600;margin-bottom:10px;">You focused for ${hours>0?`${hours}h `:''}${mins}m this week.</p>`
+    : `<p style="color:#999;margin-bottom:10px;">No focus sessions logged this week yet — the Timer tab is right there.</p>`;
+  document.getElementById('weeklyRecapContent').innerHTML = summary + rows;
+}
+document.getElementById('weeklyRecapBtn').addEventListener('click', ()=>{
+  renderWeeklyRecap();
+  document.getElementById('weeklyRecapModal').style.display='flex';
+});
+document.getElementById('closeWeeklyRecap').addEventListener('click', ()=>{ document.getElementById('weeklyRecapModal').style.display='none'; });
+
+/* ===================== ACHIEVEMENT LOG ===================== */
+function renderAchievementLog(){
+  const unlocked = data.achievements||[];
+  document.getElementById('achievementLogContent').innerHTML = ACHIEVEMENT_DEFS.map(a=>{
+    const done = unlocked.includes(a.id);
+    return `<div class="home-item" style="${done?'':'opacity:.45;'}">${done?'🏆':'🔒'} <strong>${a.label}</strong> — ${a.desc}</div>`;
+  }).join('') + `<p style="margin-top:10px;font-size:.8rem;color:#999;">${unlocked.length} of ${ACHIEVEMENT_DEFS.length} unlocked</p>`;
+}
+document.getElementById('achievementLogBtn').addEventListener('click', ()=>{
+  renderAchievementLog();
+  document.getElementById('achievementLogModal').style.display='flex';
+});
+document.getElementById('closeAchievementLog').addEventListener('click', ()=>{ document.getElementById('achievementLogModal').style.display='none'; });
+
 document.getElementById('saveSettingsBtn').addEventListener('click', async ()=>{
   const newName = document.getElementById('settingsName').value.trim();
   const dark = document.getElementById('darkModeToggle').checked;
@@ -1808,6 +2087,110 @@ function renderMistakeList(){
     </div>`).join('');
 }
 
+/* ===================== GRADE TRACKER ===================== */
+let gtActiveSubject = 0, gtActiveTerm = 1;
+function catAvg(entries){
+  if(!entries || entries.length===0) return null;
+  const sumScore = entries.reduce((s,e)=>s+e.score,0);
+  const sumTotal = entries.reduce((s,e)=>s+e.total,0);
+  if(sumTotal===0) return null;
+  return (sumScore/sumTotal)*100;
+}
+function termAvg(subject, term){
+  const t = subject.terms[term];
+  const majorAvg = catAvg(t.major);
+  const quizAvg = catAvg(t.quiz);
+  if(majorAvg===null && quizAvg===null) return null;
+  const wMajor = subject.weights.major, wQuiz = subject.weights.quiz;
+  if(majorAvg===null) return quizAvg;
+  if(quizAvg===null) return majorAvg;
+  return (majorAvg*wMajor + quizAvg*wQuiz) / (wMajor+wQuiz);
+}
+function semesterAvg(subject, termA, termB){
+  const a = termAvg(subject, termA), b = termAvg(subject, termB);
+  if(a===null && b===null) return null;
+  if(a===null) return b;
+  if(b===null) return a;
+  return (a+b)/2;
+}
+function finalGrade(subject){
+  const s1 = semesterAvg(subject,1,2), s2 = semesterAvg(subject,3,4);
+  if(s1===null && s2===null) return null;
+  if(s1===null) return s2;
+  if(s2===null) return s1;
+  return (s1+s2)/2;
+}
+function fmtPct(v){ return v===null ? '—' : v.toFixed(1)+'%'; }
+function renderGradeTracker(){
+  if(!data || !data.gradeTracker) return;
+  const gt = data.gradeTracker;
+  renderSubjectTabs('gtSubjectTabs', gt.subjects, gtActiveSubject, (i)=>{ gtActiveSubject=i; renderGradeTracker(); });
+  const subj = gt.subjects[gtActiveSubject];
+  document.getElementById('gtSubjectName').value = subj.name;
+  document.getElementById('gtMajorWeight').value = subj.weights.major;
+  document.getElementById('gtQuizWeight').value = subj.weights.quiz;
+  document.getElementById('gtTermTabs').innerHTML = [1,2,3,4].map(t=>
+    `<button class="pill-toggle ${t===gtActiveTerm?'active':''}" onclick="gtSelectTerm(${t})">Term ${t}</button>`).join('');
+  const term = subj.terms[gtActiveTerm];
+  const renderList = (entries, listId, kind) => {
+    document.getElementById(listId).innerHTML = entries.length ? entries.map((e,i)=>
+      `<div class="home-item" style="display:flex;justify-content:space-between;align-items:center;">
+        <span>${e.label.replace(/</g,'&lt;')}: ${e.score}/${e.total} (${((e.score/e.total)*100).toFixed(1)}%)</span>
+        <button class="btn small red" onclick="gtRemoveEntry('${kind}',${i})">×</button>
+      </div>`).join('') : '<p style="color:#999;font-size:.8rem;">No grades yet.</p>';
+  };
+  renderList(term.major, 'gtMajorList', 'major');
+  renderList(term.quiz, 'gtQuizList', 'quiz');
+  document.getElementById('gtMajorAvg').textContent = catAvg(term.major)!==null ? `— avg ${fmtPct(catAvg(term.major))}` : '';
+  document.getElementById('gtQuizAvg').textContent = catAvg(term.quiz)!==null ? `— avg ${fmtPct(catAvg(term.quiz))}` : '';
+  const avg = termAvg(subj, gtActiveTerm);
+  document.getElementById('gtTermAvg').textContent = avg!==null ? `Term ${gtActiveTerm} average: ${fmtPct(avg)}` : `No grades entered yet for Term ${gtActiveTerm}.`;
+
+  // overview table across all 5 subjects
+  const rows = gt.subjects.map(s=>{
+    const t1=termAvg(s,1), t2=termAvg(s,2), t3=termAvg(s,3), t4=termAvg(s,4);
+    const sem1=semesterAvg(s,1,2), sem2=semesterAvg(s,3,4), fin=finalGrade(s);
+    return `<tr><td><strong>${s.name.replace(/</g,'&lt;')}</strong></td><td>${fmtPct(t1)}</td><td>${fmtPct(t2)}</td><td>${fmtPct(t3)}</td><td>${fmtPct(t4)}</td><td>${fmtPct(sem1)}</td><td>${fmtPct(sem2)}</td><td><strong>${fmtPct(fin)}</strong></td></tr>`;
+  }).join('');
+  document.getElementById('gtOverviewTable').innerHTML = `<tr><th>Subject</th><th>T1</th><th>T2</th><th>T3</th><th>T4</th><th>Sem 1</th><th>Sem 2</th><th>Final</th></tr>${rows}`;
+}
+function gtSelectTerm(t){ gtActiveTerm=t; renderGradeTracker(); }
+function gtRemoveEntry(kind, i){
+  const subj = data.gradeTracker.subjects[gtActiveSubject];
+  subj.terms[gtActiveTerm][kind].splice(i,1);
+  renderGradeTracker(); scheduleSave();
+}
+document.getElementById('gtSubjectName').addEventListener('input', (e)=>{
+  data.gradeTracker.subjects[gtActiveSubject].name = e.target.value || `Subject ${gtActiveSubject+1}`;
+  renderSubjectTabs('gtSubjectTabs', data.gradeTracker.subjects, gtActiveSubject, (i)=>{ gtActiveSubject=i; renderGradeTracker(); });
+  scheduleSave();
+});
+document.getElementById('gtMajorWeight').addEventListener('input', (e)=>{
+  let major = Math.max(0, Math.min(100, parseInt(e.target.value)||0));
+  const subj = data.gradeTracker.subjects[gtActiveSubject];
+  subj.weights.major = major; subj.weights.quiz = 100-major;
+  document.getElementById('gtQuizWeight').value = subj.weights.quiz;
+  renderGradeTracker(); scheduleSave();
+});
+document.getElementById('gtMajorAddBtn').addEventListener('click', ()=>{
+  const label = document.getElementById('gtMajorLabel').value.trim();
+  const score = parseFloat(document.getElementById('gtMajorScore').value);
+  const total = parseFloat(document.getElementById('gtMajorTotal').value);
+  if(!label || isNaN(score) || isNaN(total) || total<=0){ showToast('Fill in a label, score, and total (out of).'); return; }
+  data.gradeTracker.subjects[gtActiveSubject].terms[gtActiveTerm].major.push({label, score, total});
+  document.getElementById('gtMajorLabel').value=''; document.getElementById('gtMajorScore').value=''; document.getElementById('gtMajorTotal').value='100';
+  renderGradeTracker(); scheduleSave();
+});
+document.getElementById('gtQuizAddBtn').addEventListener('click', ()=>{
+  const label = document.getElementById('gtQuizLabel').value.trim();
+  const score = parseFloat(document.getElementById('gtQuizScore').value);
+  const total = parseFloat(document.getElementById('gtQuizTotal').value);
+  if(!label || isNaN(score) || isNaN(total) || total<=0){ showToast('Fill in a label, score, and total (out of).'); return; }
+  data.gradeTracker.subjects[gtActiveSubject].terms[gtActiveTerm].quiz.push({label, score, total});
+  document.getElementById('gtQuizLabel').value=''; document.getElementById('gtQuizScore').value=''; document.getElementById('gtQuizTotal').value='100';
+  renderGradeTracker(); scheduleSave();
+});
+
 /* ===================== CALENDAR ===================== */
 let calYear = new Date().getFullYear(), calMonth = new Date().getMonth(), calSelectedDay = null;
 const CAL_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -1875,6 +2258,99 @@ document.getElementById('calPrevBtn').addEventListener('click', ()=>{ calMonth--
 document.getElementById('calNextBtn').addEventListener('click', ()=>{ calMonth++; if(calMonth>11){calMonth=0;calYear++;} calSelectedDay=null; renderCalendar(); });
 document.getElementById('calTodayBtn').addEventListener('click', ()=>{ calYear=new Date().getFullYear(); calMonth=new Date().getMonth(); calSelectedDay=null; renderCalendar(); });
 
+/* ===================== ICS CALENDAR IMPORT ===================== */
+function parseICS(text){
+  // unfold continuation lines per RFC5545 (lines starting with a space/tab
+  // are a continuation of the previous line)
+  const rawLines = text.split(/\r\n|\n|\r/);
+  const lines = [];
+  rawLines.forEach(line=>{
+    if(/^[ \t]/.test(line) && lines.length){ lines[lines.length-1] += line.slice(1); }
+    else { lines.push(line); }
+  });
+  const events = [];
+  let cur = null;
+  lines.forEach(line=>{
+    if(line.startsWith('BEGIN:VEVENT')){ cur = {}; }
+    else if(line.startsWith('END:VEVENT')){ if(cur) events.push(cur); cur=null; }
+    else if(cur){
+      const idx = line.indexOf(':');
+      if(idx<0) return;
+      const key = line.slice(0,idx).split(';')[0];
+      const value = line.slice(idx+1);
+      if(key==='SUMMARY') cur.summary = value;
+      else if(key==='DTSTART') cur.dtstart = value;
+      else if(key==='DTEND') cur.dtend = value;
+      else if(key==='DUE') cur.due = value;
+    }
+  });
+  return events;
+}
+function icsDateToYMD(v){
+  if(!v) return null;
+  const m = v.match(/^(\d{4})(\d{2})(\d{2})/);
+  return m ? `${m[1]}-${m[2]}-${m[3]}` : null;
+}
+let icsParsedEvents = [];
+document.getElementById('icsFileInput').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev)=>{
+    const events = parseICS(ev.target.result);
+    icsParsedEvents = events.map(ev2=>({
+      title: ev2.summary || 'Untitled assignment',
+      due: icsDateToYMD(ev2.due || ev2.dtend || ev2.dtstart) || todayStr(),
+      type: 'none', qty: 0, include: true,
+    }));
+    if(icsParsedEvents.length===0) showToast('No events found in that file.');
+    renderIcsReview();
+  };
+  reader.readAsText(file);
+});
+function renderIcsReview(){
+  const wrap = document.getElementById('icsReviewList');
+  const btn = document.getElementById('icsImportBtn');
+  if(icsParsedEvents.length===0){ wrap.innerHTML=''; btn.style.display='none'; return; }
+  wrap.innerHTML = `<p style="font-size:.8rem;color:#666;margin-bottom:8px;">${icsParsedEvents.length} event(s) found. Uncheck any you don't want, and set a workload type/amount if you want Parkinson's Law day-by-day breakdowns.</p>` +
+    icsParsedEvents.map((ev,i)=>`
+    <div class="row" style="align-items:center;margin-bottom:8px;border-bottom:1px solid #eee;padding-bottom:8px;">
+      <div style="flex:0 0 auto;"><input type="checkbox" data-ics-i="${i}" class="icsIncludeCheck" ${ev.include?'checked':''} style="width:auto;"></div>
+      <div style="flex:2"><input data-ics-i="${i}" class="icsTitleInput" value="${ev.title.replace(/"/g,'&quot;')}"></div>
+      <div style="flex:1"><input type="date" data-ics-i="${i}" class="icsDueInput" value="${ev.due}"></div>
+      <div style="flex:1"><select data-ics-i="${i}" class="icsTypeSelect">
+        <option value="none" ${ev.type==='none'?'selected':''}>No quantity</option>
+        <option value="questions" ${ev.type==='questions'?'selected':''}>Questions</option>
+        <option value="pages" ${ev.type==='pages'?'selected':''}>Pages</option>
+      </select></div>
+      <div style="flex:1"><input type="number" min="0" data-ics-i="${i}" class="icsQtyInput" value="${ev.qty}" ${ev.type==='none'?'disabled':''} placeholder="Amount"></div>
+    </div>`).join('');
+  btn.style.display='inline-block';
+  wrap.querySelectorAll('.icsIncludeCheck').forEach(el=>el.addEventListener('change', e=>{ icsParsedEvents[+e.target.dataset.icsI].include = e.target.checked; }));
+  wrap.querySelectorAll('.icsTitleInput').forEach(el=>el.addEventListener('input', e=>{ icsParsedEvents[+e.target.dataset.icsI].title = e.target.value; }));
+  wrap.querySelectorAll('.icsDueInput').forEach(el=>el.addEventListener('input', e=>{ icsParsedEvents[+e.target.dataset.icsI].due = e.target.value; }));
+  wrap.querySelectorAll('.icsTypeSelect').forEach(el=>el.addEventListener('change', e=>{ icsParsedEvents[+e.target.dataset.icsI].type = e.target.value; renderIcsReview(); }));
+  wrap.querySelectorAll('.icsQtyInput').forEach(el=>el.addEventListener('input', e=>{ icsParsedEvents[+e.target.dataset.icsI].qty = parseInt(e.target.value)||0; }));
+}
+document.getElementById('icsImportBtn').addEventListener('click', ()=>{
+  const toImport = icsParsedEvents.filter(ev=>ev.include);
+  if(toImport.length===0){ showToast('Nothing selected to import.'); return; }
+  toImport.forEach(ev=>{
+    data.tasks.push({
+      id: Date.now()+Math.floor(Math.random()*1000),
+      title: ev.title, type: ev.type, qty: ev.type==='none'?0:ev.qty,
+      start: todayStr(), due: ev.due, effectiveDue: ev.due, parkinson:false, doneDays:[]
+    });
+  });
+  showToast(`Imported ${toImport.length} assignment(s) into your Planner.`);
+  icsParsedEvents = [];
+  document.getElementById('icsReviewList').innerHTML='';
+  document.getElementById('icsImportBtn').style.display='none';
+  document.getElementById('icsFileInput').value='';
+  renderTasks();
+  scheduleSave();
+});
+
 /* ===================== FULL RENDER ON LOGIN ===================== */
 // BUGFIX: renderAll() used to call renderQuestionLog(), which didn't exist —
 // that threw a ReferenceError partway through renderAll() and silently
@@ -1911,6 +2387,8 @@ async function renderAll(){
   mlSubjectSelect();
   renderMlTypeFields();
   buildSchedule();
+  renderSchedule();
+  renderGradeTracker();
   applyDarkMode(data.darkMode||false);
   // restore display name if saved
   if(data.displayName) document.getElementById('userName').textContent = data.displayName;

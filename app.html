@@ -44,7 +44,10 @@
 <div id="appShell" style="display:none;">
 
 <div class="topbar">
-  <div class="brand"><span class="lamp"></span> StudyCore</div>
+  <div class="brand"><span class="lamp"></span> StudyCore
+    <button class="btn ghost small" id="weeklyRecapBtn" style="margin-left:10px;">📅 Weekly Recap</button>
+    <button class="btn ghost small" id="achievementLogBtn">🏆 Achievements</button>
+  </div>
   <div class="topbar-center">
     <input id="globalSearch" placeholder="🔍 Search notes, flashcards, questions…" autocomplete="off">
     <div id="searchResults" class="search-dropdown"></div>
@@ -86,6 +89,7 @@
   <button class="tab" data-tab="timer">⏱ Timer</button>
   <button class="tab" data-tab="notes">📓 Notes</button>
   <button class="tab" data-tab="qlog">❓ Question Log</button>
+  <button class="tab" data-tab="grades">📊 Grades</button>
   <button class="tab" data-tab="social">👥 Friends</button>
   <button class="tab" data-tab="calendar">📅 Calendar</button>
 </nav>
@@ -130,7 +134,7 @@
 <section id="study" class="panel">
   <div class="card">
     <h2>Mind map</h2>
-    <p style="font-size:.85rem;color:#555;">Double-click anywhere to drop a bubble. Turn on <strong>Connect</strong> then click two bubbles to draw a line. 5 subject boards, each a big scrollable canvas.</p>
+    <p style="font-size:.85rem;color:#555;">Double-click anywhere to drop a bubble. Turn on <strong>Connect</strong>, click a bubble, then click as many other bubbles as you want — they'll all link to it. Click that first bubble again to release it. 5 subject boards, each a big scrollable canvas.</p>
     <div class="subject-tabs" id="mmSubjectTabs"></div>
     <div class="row" style="align-items:flex-end;">
       <div style="flex:2"><label>Subject name</label><input id="mmSubjectName" placeholder="Subject name"></div>
@@ -249,6 +253,18 @@
           <button class="btn red small" id="resetBtn">Reset</button>
         </div>
         <p style="text-align:center;font-size:.8rem;color:#666;" id="sessionCounter">Session 0 of 4 before a long break</p>
+        <h3 style="margin-top:18px;">Ambient sound</h3>
+        <div class="row">
+          <div style="flex:2"><select id="ambientSelect">
+            <option value="none">None</option>
+            <option value="white">White noise</option>
+            <option value="pink">Pink noise</option>
+            <option value="brown">Brown noise</option>
+            <option value="rain">Rain</option>
+            <option value="ocean">Ocean waves</option>
+          </select></div>
+          <div style="flex:1"><label>Volume</label><input id="ambientVolume" type="range" min="0" max="100" value="50"></div>
+        </div>
       </div>
       <div style="flex:1;min-width:260px;">
         <div class="row">
@@ -266,6 +282,21 @@
         <p id="scheduleNote" style="font-size:.85rem;margin-top:8px;font-weight:600;"></p>
       </div>
     </div>
+  </div>
+
+  <!-- CLASS BELL SCHEDULE -->
+  <div class="card">
+    <h2>Class bell schedule</h2>
+    <p style="font-size:.85rem;color:#555;">Set up to 10 periods and up to 9 bell times, and StudyCore will show you what's next and how long until the bell.</p>
+    <div id="bellNowStatus" style="font-weight:600;margin-bottom:10px;"></div>
+    <details>
+      <summary>Edit periods &amp; bell times</summary>
+      <div id="periodEditRows" style="margin-top:10px;"></div>
+      <button class="btn small ghost" id="addPeriodBtn" style="margin-top:8px;">+ Add period (up to 10)</button>
+      <h4 style="margin-top:14px;">Bell times (up to 9 — the boundaries between your periods, in order)</h4>
+      <div id="bellEditRows"></div>
+      <button class="btn small ghost" id="addBellBtn" style="margin-top:8px;">+ Add bell time</button>
+    </details>
   </div>
 </section>
 
@@ -459,6 +490,51 @@
   </div>
 </section>
 
+<!-- GRADES TAB -->
+<section id="grades" class="panel">
+  <div class="card">
+    <h2>Grade tracker</h2>
+    <p style="font-size:.85rem;color:#555;">Track major and quiz grades per term for up to 5 subjects. Semester 1 = average of Terms 1–2, Semester 2 = average of Terms 3–4, Final = average of both semesters.</p>
+    <div class="subject-tabs" id="gtSubjectTabs"></div>
+    <div class="row" style="align-items:flex-end;">
+      <div style="flex:2"><label>Subject name</label><input id="gtSubjectName" placeholder="Subject name"></div>
+      <div style="flex:1"><label>Major grade weight (%)</label><input id="gtMajorWeight" type="number" min="0" max="100" value="70"></div>
+      <div style="flex:1"><label>Quiz grade weight (%)</label><input id="gtQuizWeight" type="number" min="0" max="100" value="30" disabled></div>
+    </div>
+    <div class="pillgroup" id="gtTermTabs" style="margin-top:10px;"></div>
+    <div class="row" style="margin-top:10px;">
+      <div style="flex:1">
+        <h3>Major grades <span id="gtMajorAvg" style="font-weight:400;font-size:.82rem;color:#666;"></span></h3>
+        <div id="gtMajorList"></div>
+        <div class="row" style="align-items:flex-end;margin-top:6px;">
+          <div style="flex:2"><input id="gtMajorLabel" placeholder="e.g. Unit 3 Test"></div>
+          <div style="flex:1"><input id="gtMajorScore" type="number" min="0" placeholder="Score"></div>
+          <div style="flex:1"><input id="gtMajorTotal" type="number" min="1" placeholder="Out of" value="100"></div>
+          <div style="flex:0 0 auto;"><button class="btn small amber" id="gtMajorAddBtn">+ Add</button></div>
+        </div>
+      </div>
+      <div style="flex:1">
+        <h3>Quiz grades <span id="gtQuizAvg" style="font-weight:400;font-size:.82rem;color:#666;"></span></h3>
+        <div id="gtQuizList"></div>
+        <div class="row" style="align-items:flex-end;margin-top:6px;">
+          <div style="flex:2"><input id="gtQuizLabel" placeholder="e.g. Quiz 4"></div>
+          <div style="flex:1"><input id="gtQuizScore" type="number" min="0" placeholder="Score"></div>
+          <div style="flex:1"><input id="gtQuizTotal" type="number" min="1" placeholder="Out of" value="100"></div>
+          <div style="flex:0 0 auto;"><button class="btn small amber" id="gtQuizAddBtn">+ Add</button></div>
+        </div>
+      </div>
+    </div>
+    <p style="margin-top:12px;font-weight:600;" id="gtTermAvg"></p>
+  </div>
+
+  <div class="card">
+    <h2>All subjects overview</h2>
+    <div style="overflow-x:auto;">
+      <table class="daily-table" id="gtOverviewTable"></table>
+    </div>
+  </div>
+</section>
+
 <!-- FRIENDS & LEADERBOARD TAB -->
 <section id="social" class="panel">
   <div class="card">
@@ -503,6 +579,14 @@
     <div id="calGrid" class="cal-grid"></div>
     <div id="calDayDetail" class="cal-day-detail" style="display:none;"></div>
   </div>
+
+  <div class="card">
+    <h2>Import from school calendar (.ics)</h2>
+    <p style="font-size:.85rem;color:#555;">Most school platforms (Google Classroom, Canvas, Schoology) can export or share a calendar feed as a <code>.ics</code> file. Upload it here to pull assignments straight into your Planner.</p>
+    <input type="file" id="icsFileInput" accept=".ics">
+    <div id="icsReviewList" style="margin-top:14px;"></div>
+    <button class="btn amber" id="icsImportBtn" style="margin-top:10px;display:none;">Import selected into Planner</button>
+  </div>
 </section>
 
 </main>
@@ -535,6 +619,26 @@
       <div style="flex:1"><button class="btn blue" id="importStackBtn" style="width:100%">Import</button></div>
     </div>
     <div style="margin-top:14px;"><button class="btn ghost" id="closeImportModal">Close</button></div>
+  </div>
+</div>
+
+<!-- Weekly Recap modal -->
+<div id="weeklyRecapModal" class="modal-overlay" style="display:none;">
+  <div class="modal-card">
+    <h2>Your week in StudyCore</h2>
+    <p style="font-size:.85rem;color:#555;">The last 7 days.</p>
+    <div id="weeklyRecapContent"></div>
+    <div style="margin-top:14px;"><button class="btn ghost" id="closeWeeklyRecap">Close</button></div>
+  </div>
+</div>
+
+<!-- Achievement Log modal -->
+<div id="achievementLogModal" class="modal-overlay" style="display:none;">
+  <div class="modal-card">
+    <h2>Achievements</h2>
+    <p style="font-size:.85rem;color:#555;">Unlocked achievements are highlighted — the rest are still up for grabs.</p>
+    <div id="achievementLogContent"></div>
+    <div style="margin-top:14px;"><button class="btn ghost" id="closeAchievementLog">Close</button></div>
   </div>
 </div>
 
