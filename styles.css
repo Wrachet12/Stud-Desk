@@ -320,6 +320,18 @@ body.dark-mode .subject-tabs button.active{background:var(--amber);color:#1a1005
 .modal-close-x:hover{color:#333;background:rgba(0,0,0,.06);}
 body.dark-mode .modal-close-x{color:var(--text-dim);}
 body.dark-mode .modal-close-x:hover{color:#fff;background:rgba(255,255,255,.08);}
+/* Weekly Recap / Achievements get a distinct dark, cream-text "showcase"
+   look in both light and dark mode, instead of the default dark-ink-on-
+   cream-paper styling every other modal uses. */
+#weeklyRecapModal .modal-card, #achievementLogModal .modal-card{
+  background:#2a2f45; color:#EFE6C8; border:1px solid #EFE6C8;
+}
+#weeklyRecapModal .modal-card h2, #achievementLogModal .modal-card h2{ color:#EFE6C8; }
+#weeklyRecapModal .modal-card p, #achievementLogModal .modal-card p{ color:#c9c0a0 !important; }
+#weeklyRecapModal .home-item, #achievementLogModal .home-item{ color:#EFE6C8; border-bottom-color:#454b68; }
+#weeklyRecapModal .modal-close-x, #achievementLogModal .modal-close-x{ color:#c9c0a0; }
+#weeklyRecapModal .modal-close-x:hover, #achievementLogModal .modal-close-x:hover{ color:#fff; background:rgba(255,255,255,.1); }
+#weeklyRecapModal .btn.ghost, #achievementLogModal .btn.ghost{ border-color:#EFE6C8; color:#EFE6C8; }
 body.dark-mode .modal-card{background:var(--surface2);color:var(--text);}
 .modal-card h2{margin-bottom:14px;}
 .modal-card label{display:block;font-size:.78rem;font-weight:600;color:#666;margin:10px 0 4px;text-transform:uppercase;letter-spacing:.04em;}

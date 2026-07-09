@@ -262,8 +262,12 @@
             <option value="brown">Brown noise</option>
             <option value="rain">Rain</option>
             <option value="ocean">Ocean waves</option>
+            <option value="custom">Custom (upload your own)</option>
           </select></div>
-          <div style="flex:1"><label>Volume</label><input id="ambientVolume" type="range" min="0" max="100" value="50"></div>
+          <div style="flex:1"><label>Volume</label><input id="ambientVolume" type="range" min="0" max="100" value="35"></div>
+        </div>
+        <div class="row" style="margin-top:6px;">
+          <div style="flex:1"><label>Or upload your own sound (loops locally, never uploaded anywhere)</label><input type="file" id="ambientFileInput" accept="audio/*"></div>
         </div>
       </div>
       <div style="flex:1;min-width:260px;">

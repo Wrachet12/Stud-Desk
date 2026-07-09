@@ -118,6 +118,14 @@ async function loadProfileAndEnter(userId, email){
   }
   currentUserId = userId;
   data = Object.assign(newUserData(), profile.app_data || {});
+  // BUGFIX: schedule used to be {periods, bells} in an earlier version of
+  // this feature; Object.assign replaces the whole nested object wholesale,
+  // so any account that saved schedule data under that old shape would end
+  // up with `data.schedule.blocks` undefined — silently breaking every
+  // "add period/bell" click with nothing visibly happening. Normalize it.
+  if(!data.schedule || !Array.isArray(data.schedule.blocks)){
+    data.schedule = { blocks: [] };
+  }
   // One-time migration: earlier versions had a single flat mind map
   // (data.bubbles/data.connections) instead of 5 subject boards. Fold any
   // existing bubbles into Subject 1 so nothing gets lost.
@@ -134,6 +142,15 @@ async function loadProfileAndEnter(userId, email){
     data.mindmaps[0].bubbleSeq = profile.app_data.bubbleSeq || 0;
   }
   data.mindmapMigratedV1 = true;
+  // BUGFIX (more robust): a flag alone only helps once it's actually saved —
+  // if this is the first login since the fix shipped, the flag hasn't hit
+  // the database yet, so it could still look like it reverted "one more
+  // time." Actually deleting the legacy fields removes the trigger
+  // condition entirely, and saving immediately (not waiting for the normal
+  // 900ms debounce) means it can never fire again starting right now.
+  delete data.bubbles;
+  delete data.connections;
+  delete data.bubbleSeq;
   // One-time backfill: achievements/lifetimeStats launched after some
   // accounts were already deep into using StudyCore (e.g. already high
   // level), so a brand-new "0 focus sessions" counter would unfairly lock
@@ -158,6 +175,7 @@ async function loadProfileAndEnter(userId, email){
     data.lifetimeStatsBackfilled = true;
     checkAchievements();
   }
+  await saveData(); // persist migration/backfill flags immediately, don't wait for the debounce
   document.getElementById('authOverlay').style.display='none';
   document.getElementById('appShell').style.display='block';
   document.getElementById('userName').textContent = profile.name || (email ? email.split('@')[0] : 'Student');
@@ -519,12 +537,26 @@ function tick(){
 }
 
 /* ===================== AMBIENT SOUND (generated, no files/cost) ===================== */
-let audioCtx = null, ambientNodes = null;
+// BUGFIX (sound quality): the previous version had real problems — brown
+// noise could clip well past full volume (harsh crackling), nothing had a
+// fade-in (an instant full-volume noise burst is jarring), rain's filter
+// swept across a huge frequency range like a siren instead of a gentle
+// texture, and nothing was lowpass-filtered to take the harsh edge off.
+// All of that is fixed below, plus a soft limiter on the output so nothing
+// can ever hard-clip regardless of the source. A "Custom" option is also
+// added so you can play your own local audio file instead — no upload to
+// any server, it just plays straight from your device.
+let audioCtx = null, ambientNodes = null, customAmbientBuffer = null;
 function makeNoiseBuffer(ctx, colorFn){
   const bufferSize = 2*ctx.sampleRate;
   const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
   colorFn(buffer.getChannelData(0));
   return buffer;
+}
+function makeSoftLimiterCurve(){
+  const n = 4096, curve = new Float32Array(n);
+  for(let i=0;i<n;i++){ const x = (i*2)/n - 1; curve[i] = Math.tanh(x*1.5); }
+  return curve;
 }
 function stopAmbient(){
   if(ambientNodes){
@@ -535,18 +567,26 @@ function stopAmbient(){
 function startAmbient(type, volume){
   stopAmbient();
   if(type==='none') return;
+  if(type==='custom' && !customAmbientBuffer){ showToast('Upload a sound file first.'); return; }
   if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
   const ctx = audioCtx;
   if(ctx.state==='suspended') ctx.resume();
+
+  const limiter = ctx.createWaveShaper(); limiter.curve = makeSoftLimiterCurve(); limiter.oversample = '2x';
   const gainNode = ctx.createGain();
-  gainNode.gain.value = volume;
-  gainNode.connect(ctx.destination);
-  const nodes = [gainNode];
+  gainNode.gain.setValueAtTime(0, ctx.currentTime);
+  gainNode.gain.linearRampToValueAtTime(volume, ctx.currentTime + 1.2); // gentle fade-in, no jarring burst
+  limiter.connect(gainNode); gainNode.connect(ctx.destination);
+  const nodes = [gainNode, limiter];
   const whiteFill = out=>{ for(let i=0;i<out.length;i++) out[i]=Math.random()*2-1; };
+  // gentle master lowpass on every noise type — takes the harsh hiss off
+  const softener = ctx.createBiquadFilter(); softener.type='lowpass'; softener.frequency.value=4200;
+  softener.connect(limiter);
+  nodes.push(softener);
 
   if(type==='white'){
     const src = ctx.createBufferSource(); src.buffer = makeNoiseBuffer(ctx, whiteFill); src.loop=true;
-    src.connect(gainNode); src.start(); nodes.push(src);
+    src.connect(softener); src.start(); nodes.push(src);
   } else if(type==='pink'){
     let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
     const buffer = makeNoiseBuffer(ctx, out=>{
@@ -558,39 +598,63 @@ function startAmbient(type, volume){
       }
     });
     const src = ctx.createBufferSource(); src.buffer=buffer; src.loop=true;
-    src.connect(gainNode); src.start(); nodes.push(src);
+    src.connect(softener); src.start(); nodes.push(src);
   } else if(type==='brown'){
+    // BUGFIX: the old ×3.5 amplification could push this well past ±1
+    // (hard clipping = crackling). ×2 plus the shared soft limiter keeps
+    // it loud enough without ever clipping harshly.
     let lastOut=0;
     const buffer = makeNoiseBuffer(ctx, out=>{
       for(let i=0;i<out.length;i++){
         const white = Math.random()*2-1;
-        out[i] = (lastOut + 0.02*white)/1.02; lastOut = out[i]; out[i] *= 3.5;
+        lastOut = (lastOut + 0.02*white)/1.02;
+        out[i] = lastOut * 2;
       }
     });
     const src = ctx.createBufferSource(); src.buffer=buffer; src.loop=true;
-    src.connect(gainNode); src.start(); nodes.push(src);
+    src.connect(softener); src.start(); nodes.push(src);
   } else if(type==='rain'){
     const src = ctx.createBufferSource(); src.buffer = makeNoiseBuffer(ctx, whiteFill); src.loop=true;
-    const filter = ctx.createBiquadFilter(); filter.type='bandpass'; filter.frequency.value=3000; filter.Q.value=0.6;
-    const lfo = ctx.createOscillator(); lfo.frequency.value=0.15;
-    const lfoGain = ctx.createGain(); lfoGain.gain.value=800;
+    const filter = ctx.createBiquadFilter(); filter.type='bandpass'; filter.frequency.value=2200; filter.Q.value=0.5;
+    // BUGFIX: this used to sweep the filter frequency by ±800Hz, which
+    // sounded like a siren/wah pedal, not rain. A much smaller ±60Hz drift
+    // gives a natural, non-distracting texture instead.
+    const lfo = ctx.createOscillator(); lfo.frequency.value=0.1;
+    const lfoGain = ctx.createGain(); lfoGain.gain.value=60;
     lfo.connect(lfoGain); lfoGain.connect(filter.frequency); lfo.start();
-    src.connect(filter); filter.connect(gainNode); src.start();
+    src.connect(filter); filter.connect(softener); src.start();
     nodes.push(src, filter, lfo, lfoGain);
   } else if(type==='ocean'){
     const src = ctx.createBufferSource(); src.buffer = makeNoiseBuffer(ctx, whiteFill); src.loop=true;
-    const filter = ctx.createBiquadFilter(); filter.type='lowpass'; filter.frequency.value=500;
-    const waveGain = ctx.createGain(); waveGain.gain.value=0.7;
-    const lfo = ctx.createOscillator(); lfo.frequency.value=0.1;
-    const lfoGain = ctx.createGain(); lfoGain.gain.value=0.3;
+    const filter = ctx.createBiquadFilter(); filter.type='lowpass'; filter.frequency.value=350;
+    const waveGain = ctx.createGain(); waveGain.gain.value=0.6;
+    const lfo = ctx.createOscillator(); lfo.frequency.value=0.08;
+    const lfoGain = ctx.createGain(); lfoGain.gain.value=0.25;
     lfo.connect(lfoGain); lfoGain.connect(waveGain.gain); lfo.start();
-    src.connect(filter); filter.connect(waveGain); waveGain.connect(gainNode); src.start();
+    src.connect(filter); filter.connect(waveGain); waveGain.connect(softener); src.start();
     nodes.push(src, filter, lfo, lfoGain, waveGain);
+  } else if(type==='custom'){
+    const src = ctx.createBufferSource(); src.buffer = customAmbientBuffer; src.loop = true;
+    src.connect(softener); src.start(); nodes.push(src);
   }
   ambientNodes = nodes;
 }
+document.getElementById('ambientFileInput')?.addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  try{
+    if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    const arrayBuf = await file.arrayBuffer();
+    customAmbientBuffer = await audioCtx.decodeAudioData(arrayBuf);
+    showToast('Sound loaded — select "Custom" to play it.');
+    document.getElementById('ambientSelect').value = 'custom';
+    const vol = (parseInt(document.getElementById('ambientVolume').value)||35)/100;
+    startAmbient('custom', vol);
+    data.ambientSound = 'custom'; scheduleSave();
+  }catch(err){ showToast('Could not read that audio file.'); }
+});
 document.getElementById('ambientSelect').addEventListener('change', (e)=>{
-  const vol = (parseInt(document.getElementById('ambientVolume').value)||50)/100;
+  const vol = (parseInt(document.getElementById('ambientVolume').value)||35)/100;
   startAmbient(e.target.value, vol);
   if(data){ data.ambientSound = e.target.value; scheduleSave(); }
 });
@@ -629,7 +693,7 @@ function addScheduleBlock(type){
   const name = document.getElementById('blockNameInput').value.trim();
   const start = document.getElementById('blockStartInput').value;
   const end = document.getElementById('blockEndInput').value;
-  if(!start || !end){ showToast('Set a start and end time.'); return; }
+  if(!start || !end){ showToast("Set a start AND an end time — the end time field clears after each add, so it needs to be filled in again for the next one."); document.getElementById('blockEndInput').focus(); return; }
   if(timeStrToMinutes(end) <= timeStrToMinutes(start)){ showToast('End time must be after start time.'); return; }
   if(type==='period' && periodCount()>=10){ showToast('Max 10 periods.'); return; }
   if(type==='bell' && bellCount()>=9){ showToast('Max 9 bells.'); return; }
@@ -638,6 +702,7 @@ function addScheduleBlock(type){
   document.getElementById('blockNameInput').value='';
   document.getElementById('blockStartInput').value = end; // next block naturally starts where this one ended
   document.getElementById('blockEndInput').value='';
+  document.getElementById('blockEndInput').focus();
   renderScheduleBlockList(); scheduleSave(); updateBellStatus();
 }
 document.getElementById('addPeriodBtn').addEventListener('click', ()=>addScheduleBlock('period'));
@@ -1673,7 +1738,11 @@ document.getElementById('saveSettingsBtn').addEventListener('click', async ()=>{
   if(newName && currentUserId){
     try{ await sb.from('profiles').update({ name: newName }).eq('id', currentUserId); }catch(e){}
   }
-  scheduleSave();
+  // BUGFIX: this used to call the debounced scheduleSave() (900ms delay) —
+  // people naturally close the tab/laptop right after clicking Save, and
+  // the browser can kill the page before that delayed save ever fires,
+  // silently losing the dark mode preference. Save immediately instead.
+  await saveData();
   document.getElementById('accountModal').style.display='none';
   showToast('Settings saved.');
 });
