@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>StudyCore — Plan, Time, Note, Learn</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5483196886768719" crossorigin="anonymous"></script>
 </head>
@@ -14,7 +14,7 @@
 <!-- AUTH -->
 <div id="authOverlay">
   <div class="auth-card">
-    <a href="index.html" style="display:inline-block;font-size:.78rem;color:#9a916f;text-decoration:none;margin-bottom:10px;">← Back to home</a>
+    <a href="index.html" style="display:inline-block;font-size:.78rem;color:#3d4f97;text-decoration:none;margin-bottom:10px;font-weight:600;">← Back to home</a>
     <div class="auth-brand"><span class="lamp"></span> StudyCore</div>
     <div class="auth-sub">Plan it, time it, note it, learn it.</div>
     <div class="auth-tabs">
@@ -43,7 +43,7 @@
 <!-- APP SHELL -->
 <div id="appShell" style="display:none;">
 
-<div class="topbar">
+<div class="topbar halftone">
   <div class="brand"><span class="lamp"></span> StudyCore
     <button class="btn ghost small" id="weeklyRecapBtn" style="margin-left:10px;">📅 Weekly Recap</button>
     <button class="btn ghost small" id="achievementLogBtn">🏆 Achievements</button>
@@ -82,7 +82,7 @@
   </div>
 </div>
 
-<nav class="tabs">
+<nav class="tabs halftone">
   <button class="tab active" data-tab="home">🏠 Today</button>
   <button class="tab" data-tab="study">📚 Study</button>
   <button class="tab" data-tab="planner">🗓 Planner</button>
@@ -465,7 +465,7 @@
   <div id="qmistakes" class="qsubpanel card" style="display:none;">
     <h2>Mistake log</h2>
     <p style="font-size:.85rem;color:#555;">Auto-filled from practice tests. Also add questions you missed on real tests.</p>
-    <div class="card" style="background:#fffef5;border:1px solid #ddd;margin-bottom:16px;">
+    <div class="card" style="background:#f4f6fb;border:1px solid #5a5f8c;margin-bottom:16px;">
       <h3>+ Add a missed real-test question</h3>
       <div class="row">
         <div style="flex:2"><label>Question prompt</label><textarea id="mlPrompt" style="min-height:60px;"></textarea></div>
@@ -581,7 +581,7 @@
     <h2>Calendar</h2>
     <div class="cal-nav">
       <button class="btn small ghost" id="calPrevBtn">‹</button>
-      <span id="calMonthLabel" style="font-family:'Fraunces',serif;font-size:1.1rem;font-weight:700;"></span>
+      <span id="calMonthLabel" style="font-family:Arial Black,Arial,sans-serif;font-size:1.1rem;font-weight:900;letter-spacing:.5px;"></span>
       <button class="btn small ghost" id="calNextBtn">›</button>
       <button class="btn small amber" id="calTodayBtn">Today</button>
     </div>
@@ -608,7 +608,7 @@
   <div class="modal-card">
     <h2 id="shareModalTitle">Share</h2>
     <p style="font-size:.85rem;color:#555;">Anyone with this code can import a copy.</p>
-    <div style="background:#f4f0e4;padding:12px;border-radius:8px;font-family:monospace;word-break:break-all;font-size:.82rem;" id="shareCode"></div>
+    <div style="background:#eef1f9;padding:12px;border:1px solid #5a5f8c;font-family:'VT323',monospace;font-size:1.1rem;word-break:break-all;" id="shareCode"></div>
     <div style="margin-top:14px;">
       <button class="btn amber" id="copyShareCodeBtn">Copy code</button>
       <button class="btn ghost" id="closeShareModal" style="margin-left:8px;">Close</button>
