@@ -297,7 +297,7 @@ function checkAchievements(){
   ACHIEVEMENT_DEFS.forEach(a=>{
     if(!data.achievements.includes(a.id) && a.check(data)){
       data.achievements.push(a.id);
-      showToast(`🏆 Achievement unlocked: ${a.label}`);
+      showToast(`★ Achievement unlocked: ${a.label}`);
     }
   });
 }
@@ -367,7 +367,7 @@ function checkVague(){
   const box = document.getElementById('vagueWarning');
   if(text.length===0){ box.innerHTML=''; return; }
   if(broad && words.length<=4){
-    box.innerHTML = `<div class="tip risk">⚠ This reads like an end goal, not a step. Risky — it's vague about what to actually do today. Try something like "Redo last quiz's wrong answers" instead.</div>`;
+    box.innerHTML = `<div class="tip risk">▲ This reads like an end goal, not a step. Risky — it's vague about what to actually do today. Try something like "Redo last quiz's wrong answers" instead.</div>`;
   } else {
     box.innerHTML = `<div class="tip good">Good — this is a concrete, doable step.</div>`;
   }
@@ -680,7 +680,7 @@ function renderScheduleBlockList(){
   const blocks = data.schedule.blocks;
   wrap.innerHTML = blocks.length ? blocks.map((b,i)=>`
     <div class="row" style="align-items:center;margin-bottom:6px;">
-      <div style="flex:0 0 90px;font-weight:600;">${b.type==='period'?'📚':'🔔'} ${b.type==='period'?'Period':'Bell'}</div>
+      <div style="flex:0 0 90px;font-weight:600;">${b.type==='period'?'■':'●'} ${b.type==='period'?'Period':'Bell'}</div>
       <div style="flex:2">${b.type==='period' ? (b.name||'Untitled').replace(/</g,'&lt;') : '<span style="color:#999;">Passing period</span>'}</div>
       <div style="flex:1">${b.start}–${b.end}</div>
       <div style="flex:0 0 auto;"><button class="btn small red" onclick="removeScheduleBlock(${i})">Remove</button></div>
@@ -1694,12 +1694,12 @@ document.getElementById('closeSettingsBtn').addEventListener('click', ()=>{ docu
 
 /* ===================== WEEKLY RECAP ===================== */
 const RECAP_LABELS = {
-  focusSessions:{ label:'Focus sessions', unit:'min', icon:'⏱' },
-  leitnerReviews:{ label:'Leitner reviews', unit:'card(s)', icon:'📦' },
-  flashcards:{ label:'Flashcards made', unit:'card(s)', icon:'🗂' },
-  testsCompleted:{ label:'Practice tests taken', unit:'test(s)', icon:'📝' },
-  notesEdited:{ label:'Note edits', unit:'edit(s)', icon:'📓' },
-  tasksCompleted:{ label:'Planner tasks completed', unit:'task(s)', icon:'✅' },
+  focusSessions:{ label:'Focus sessions', unit:'min', icon:'●' },
+  leitnerReviews:{ label:'Leitner reviews', unit:'card(s)', icon:'▦' },
+  flashcards:{ label:'Flashcards made', unit:'card(s)', icon:'▤' },
+  testsCompleted:{ label:'Practice tests taken', unit:'test(s)', icon:'■' },
+  notesEdited:{ label:'Note edits', unit:'edit(s)', icon:'◆' },
+  tasksCompleted:{ label:'Planner tasks completed', unit:'task(s)', icon:'✓' },
 };
 function renderWeeklyRecap(){
   const cutoff = addDays(todayStr(), -6); // last 7 days inclusive of today
@@ -1730,7 +1730,7 @@ function renderAchievementLog(){
   const unlocked = data.achievements||[];
   document.getElementById('achievementLogContent').innerHTML = ACHIEVEMENT_DEFS.map(a=>{
     const done = unlocked.includes(a.id);
-    return `<div class="home-item" style="${done?'':'opacity:.45;'}">${done?'🏆':'🔒'} <strong>${a.label}</strong> — ${a.desc}</div>`;
+    return `<div class="home-item" style="${done?'':'opacity:.45;'}">${done?'★':'○'} <strong>${a.label}</strong> — ${a.desc}</div>`;
   }).join('') + `<p style="margin-top:10px;font-size:.8rem;color:#999;">${unlocked.length} of ${ACHIEVEMENT_DEFS.length} unlocked</p>`;
 }
 document.getElementById('achievementLogBtn').addEventListener('click', ()=>{
@@ -1965,39 +1965,39 @@ function renderHome(){
   const now = new Date();
   const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  document.getElementById('todayGreeting').textContent = `Good ${now.getHours()<12?'morning':now.getHours()<17?'afternoon':'evening'}, ${data.displayName || document.getElementById('userName').textContent} 👋`;
+  document.getElementById('todayGreeting').textContent = `Good ${now.getHours()<12?'morning':now.getHours()<17?'afternoon':'evening'}, ${data.displayName || document.getElementById('userName').textContent}`;
   document.getElementById('todayDate').textContent = `${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
 
   // Due today / urgent
   const today = todayStr();
   const urgentTasks = data.tasks.filter(t=> t.effectiveDue <= today);
   const homeTasks = document.getElementById('homeTasks');
-  homeTasks.innerHTML = urgentTasks.length ? urgentTasks.map(t=>`<div class="home-item">📌 ${t.title.replace(/</g,'&lt;')} <span style="color:var(--red);font-size:.72rem;">due ${t.effectiveDue}</span></div>`).join('') : '<div class="home-empty">Nothing urgent today!</div>';
+  homeTasks.innerHTML = urgentTasks.length ? urgentTasks.map(t=>`<div class="home-item">▪ ${t.title.replace(/</g,'&lt;')} <span style="color:var(--red);font-size:.72rem;">due ${t.effectiveDue}</span></div>`).join('') : '<div class="home-empty">Nothing urgent today!</div>';
 
   // Leitner cards ready
   const readyCards = [];
   for(let b=1;b<=5;b++) data.leitner[b].forEach(c=>{ if(Date.now()>=c.nextReviewTs) readyCards.push(c); });
-  document.getElementById('homeLeitner').innerHTML = readyCards.length ? readyCards.slice(0,5).map(c=>`<div class="home-item">🃏 ${c.text.replace(/</g,'&lt;')}</div>`).join('') + (readyCards.length>5?`<div class="home-empty">+${readyCards.length-5} more</div>`:'') : '<div class="home-empty">All caught up!</div>';
+  document.getElementById('homeLeitner').innerHTML = readyCards.length ? readyCards.slice(0,5).map(c=>`<div class="home-item">▦ ${c.text.replace(/</g,'&lt;')}</div>`).join('') + (readyCards.length>5?`<div class="home-empty">+${readyCards.length-5} more</div>`:'') : '<div class="home-empty">All caught up!</div>';
 
   // Upcoming 7 days
   const upcoming = data.tasks.filter(t=>{ const d=daysBetween(today, t.effectiveDue); return d>0 && d<=7; }).sort((a,b)=>a.effectiveDue.localeCompare(b.effectiveDue));
-  document.getElementById('homeUpcoming').innerHTML = upcoming.length ? upcoming.map(t=>`<div class="home-item">📋 ${t.title.replace(/</g,'&lt;')} <span style="color:#888;font-size:.72rem;">${t.effectiveDue}</span></div>`).join('') : '<div class="home-empty">Nothing due in 7 days.</div>';
+  document.getElementById('homeUpcoming').innerHTML = upcoming.length ? upcoming.map(t=>`<div class="home-item">▪ ${t.title.replace(/</g,'&lt;')} <span style="color:#888;font-size:.72rem;">${t.effectiveDue}</span></div>`).join('') : '<div class="home-empty">Nothing due in 7 days.</div>';
 
   // Weak spots from mistakes
   const catCounts = {};
   data.questionLog.mistakes.forEach(m=>{ if(m.subjectName) catCounts[m.subjectName]=(catCounts[m.subjectName]||0)+1; });
   const sorted = Object.entries(catCounts).sort((a,b)=>b[1]-a[1]);
-  document.getElementById('homeWeakness').innerHTML = sorted.length ? sorted.slice(0,4).map(([cat,ct])=>`<div class="home-item">⚠️ ${cat.replace(/</g,'&lt;')} <span style="color:var(--red);font-size:.72rem;">${ct} mistake(s)</span></div>`).join('') : '<div class="home-empty">No mistakes logged yet.</div>';
+  document.getElementById('homeWeakness').innerHTML = sorted.length ? sorted.slice(0,4).map(([cat,ct])=>`<div class="home-item">▲ ${cat.replace(/</g,'&lt;')} <span style="color:var(--red);font-size:.72rem;">${ct} mistake(s)</span></div>`).join('') : '<div class="home-empty">No mistakes logged yet.</div>';
 
   // Stats
   document.getElementById('homeStats').innerHTML = `
-    <div class="home-item">🔥 Streak: <strong>${data.streak} day(s)</strong></div>
-    <div class="home-item">⭐ Level ${data.level} · <strong>${data.xp} XP</strong></div>
+    <div class="home-item">» Streak: <strong>${data.streak} day(s)</strong></div>
+    <div class="home-item">★ Level ${data.level} · <strong>${data.xp} XP</strong></div>
     <div class="home-item" style="font-size:.75rem;color:#999;">${100-(data.xp%100)} XP to next level</div>`;
 
   // Unreviewed mistakes (no explanation yet)
   const unreviewed = data.questionLog.mistakes.filter(m=>!m.explanation || m.explanation.trim()==='');
-  document.getElementById('homeMistakes').innerHTML = unreviewed.length ? unreviewed.slice(0,4).map(m=>`<div class="home-item">❌ ${m.prompt.slice(0,50).replace(/</g,'&lt;')}</div>`).join('')+(unreviewed.length>4?`<div class="home-empty">+${unreviewed.length-4} more</div>`:'') : '<div class="home-empty">All mistakes reviewed!</div>';
+  document.getElementById('homeMistakes').innerHTML = unreviewed.length ? unreviewed.slice(0,4).map(m=>`<div class="home-item">✕ ${m.prompt.slice(0,50).replace(/</g,'&lt;')}</div>`).join('')+(unreviewed.length>4?`<div class="home-empty">+${unreviewed.length-4} more</div>`:'') : '<div class="home-empty">All mistakes reviewed!</div>';
 }
 
 /* ===================== FRIENDS / LEADERBOARD (browser-local) ===================== */
@@ -2401,8 +2401,8 @@ function showCalDayDetail(dateStr){
   const tasks=data.tasks.filter(t=>t.effectiveDue===dateStr);
   const mistakes=data.questionLog.mistakes.filter(m=>localYMD(new Date(m.ts))===dateStr);
   let html=`<h3>${dateStr}</h3>`;
-  if(tasks.length) html+=`<strong>Tasks due:</strong>`+tasks.map(t=>`<div class="home-item">📋 ${t.title.replace(/</g,'&lt;')}</div>`).join('');
-  if(mistakes.length) html+=`<strong>Mistakes logged:</strong>`+mistakes.map(m=>`<div class="home-item" style="color:var(--red);">❌ ${m.prompt.slice(0,60).replace(/</g,'&lt;')}</div>`).join('');
+  if(tasks.length) html+=`<strong>Tasks due:</strong>`+tasks.map(t=>`<div class="home-item">▪ ${t.title.replace(/</g,'&lt;')}</div>`).join('');
+  if(mistakes.length) html+=`<strong>Mistakes logged:</strong>`+mistakes.map(m=>`<div class="home-item" style="color:var(--red);">✕ ${m.prompt.slice(0,60).replace(/</g,'&lt;')}</div>`).join('');
   if(!tasks.length&&!mistakes.length) html+='<p style="color:#aaa;font-size:.82rem;">Nothing logged for this day.</p>';
   detail.innerHTML=html;
 }

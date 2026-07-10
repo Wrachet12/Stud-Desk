@@ -36,7 +36,7 @@
       <div class="auth-error" id="signupError"></div>
       <button class="btn amber" type="submit">Create account</button>
     </form>
-    <div class="lock-note">🔒 Protected by Supabase Auth — passwords hashed, data synced to your account across all devices.</div>
+    <div class="lock-note">▪ Protected by Supabase Auth — passwords hashed, data synced to your account across all devices.</div>
   </div>
 </div>
 
@@ -45,21 +45,21 @@
 
 <div class="topbar halftone">
   <div class="brand"><span class="lamp"></span> StudyCore
-    <button class="btn ghost small" id="weeklyRecapBtn" style="margin-left:10px;">📅 Weekly Recap</button>
-    <button class="btn ghost small" id="achievementLogBtn">🏆 Achievements</button>
+    <button class="btn ghost small" id="weeklyRecapBtn" style="margin-left:10px;">▤ Weekly Recap</button>
+    <button class="btn ghost small" id="achievementLogBtn">★ Achievements</button>
   </div>
   <div class="topbar-center">
-    <input id="globalSearch" placeholder="🔍 Search notes, flashcards, questions…" autocomplete="off">
+    <input id="globalSearch" placeholder="Search notes, flashcards, questions…" autocomplete="off">
     <div id="searchResults" class="search-dropdown"></div>
   </div>
   <div class="stats">
     <div class="level-pill">Lv <span id="levelNum">1</span></div>
     <div class="xpbar-wrap"><div class="xpbar-fill" id="xpBar"></div></div>
     <div class="stat-block mono"><span id="xpNum">0</span> XP</div>
-    <div class="streak">🔥 <span id="streakNum">0</span></div>
+    <div class="streak">» <span id="streakNum">0</span></div>
     <div class="userbox">
       <span id="userName"></span>
-      <button id="accountBtn">⚙ Account</button>
+      <button id="accountBtn">≡ Account</button>
       <button id="logoutBtn">Log out</button>
     </div>
   </div>
@@ -83,15 +83,15 @@
 </div>
 
 <nav class="tabs halftone">
-  <button class="tab active" data-tab="home">🏠 Today</button>
-  <button class="tab" data-tab="study">📚 Study</button>
-  <button class="tab" data-tab="planner">🗓 Planner</button>
-  <button class="tab" data-tab="timer">⏱ Timer</button>
-  <button class="tab" data-tab="notes">📓 Notes</button>
-  <button class="tab" data-tab="qlog">❓ Question Log</button>
-  <button class="tab" data-tab="grades">📊 Grades</button>
-  <button class="tab" data-tab="social">👥 Friends</button>
-  <button class="tab" data-tab="calendar">📅 Calendar</button>
+  <button class="tab active" data-tab="home">Today</button>
+  <button class="tab" data-tab="study">Study</button>
+  <button class="tab" data-tab="planner">Planner</button>
+  <button class="tab" data-tab="timer">Timer</button>
+  <button class="tab" data-tab="notes">Notes</button>
+  <button class="tab" data-tab="qlog">Question Log</button>
+  <button class="tab" data-tab="grades">Grades</button>
+  <button class="tab" data-tab="social">Friends</button>
+  <button class="tab" data-tab="calendar">Calendar</button>
 </nav>
 
 <main>
@@ -103,27 +103,27 @@
     <p id="todayDate" style="color:#777;font-size:.85rem;margin-bottom:20px;"></p>
     <div class="home-grid">
       <div class="card home-card">
-        <h3>📋 Due today / urgent</h3>
+        <h3>■ Due today / urgent</h3>
         <div id="homeTasks"></div>
       </div>
       <div class="card home-card">
-        <h3>🃏 Leitner cards ready</h3>
+        <h3>▦ Leitner cards ready</h3>
         <div id="homeLeitner"></div>
       </div>
       <div class="card home-card">
-        <h3>📅 Upcoming (next 7 days)</h3>
+        <h3>▤ Upcoming (next 7 days)</h3>
         <div id="homeUpcoming"></div>
       </div>
       <div class="card home-card">
-        <h3>⚠️ Weak spots</h3>
+        <h3>▲ Weak spots</h3>
         <div id="homeWeakness"></div>
       </div>
       <div class="card home-card">
-        <h3>🔥 Streak &amp; XP</h3>
+        <h3>» Streak &amp; XP</h3>
         <div id="homeStats"></div>
       </div>
       <div class="card home-card">
-        <h3>❓ Unreviewed mistakes</h3>
+        <h3>✕ Unreviewed mistakes</h3>
         <div id="homeMistakes"></div>
       </div>
     </div>
@@ -141,7 +141,7 @@
     </div>
     <div class="pillgroup">
       <button class="btn small ghost" id="addBubbleBtn">+ Add bubble</button>
-      <button class="btn small ghost" id="connectModeBtn">🔗 Connect</button>
+      <button class="btn small ghost" id="connectModeBtn">► Connect</button>
       <button class="btn small ghost" id="clearMapBtn">Clear this board</button>
     </div>
     <div id="mindmapViewport">
@@ -184,8 +184,8 @@
     </div>
     <div class="pillgroup" style="margin-top:4px;">
       <button class="btn amber" id="flashAddBtn">+ Add card</button>
-      <button class="btn ghost small" id="flashShareBtn">🔗 Share stack</button>
-      <button class="btn ghost small" id="flashImportBtn">📥 Import stack</button>
+      <button class="btn ghost small" id="flashShareBtn">► Share stack</button>
+      <button class="btn ghost small" id="flashImportBtn">◄ Import stack</button>
     </div>
     <div id="flashViewer" style="margin-top:16px;"></div>
   </div>
@@ -457,7 +457,7 @@
       </div>
     </div>
     <button class="btn amber" id="ptCreateBtn" style="margin-top:6px;">+ Create practice test</button>
-    <button class="btn ghost small" id="ptImportBtn" style="margin-top:6px;">📥 Import test</button>
+    <button class="btn ghost small" id="ptImportBtn" style="margin-top:6px;">◄ Import test</button>
     <div id="ptList" style="margin-top:16px;"></div>
     <div id="ptRunner" style="margin-top:16px;"></div>
   </div>
