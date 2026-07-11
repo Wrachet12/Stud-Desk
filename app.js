@@ -423,7 +423,7 @@ function flexibilityScore(task){
 function renderTasks(){
   if(!data) return;
   const list = document.getElementById('taskList');
-  if(data.tasks.length===0){ list.innerHTML = '<p style="color:#888;font-size:.85rem;">Nothing planned yet — add your first step above.</p>'; return; }
+  if(data.tasks.length===0){ list.innerHTML = '<p style="color:#999;font-size:.85rem;">Nothing planned yet — add your first step above.</p>'; return; }
   const withScore = data.tasks.map(t=>({t, score: flexibilityScore(t)}));
   withScore.sort((a,b)=> currentFilter==='rec' ? a.score-b.score : b.score-a.score);
   list.innerHTML = withScore.map(({t,score})=>{
@@ -448,7 +448,7 @@ function renderTasks(){
       <div class="task-head">
         <div>
           <div class="task-title">${t.title}</div>
-          <div style="font-size:.78rem;color:#777;margin-top:2px;">Due ${t.due}${t.parkinson?` · tightened to ${t.effectiveDue} (Parkinson's Law)`:''} · ${remaining} day(s) left</div>
+          <div style="font-size:.78rem;color:#999;margin-top:2px;">Due ${t.due}${t.parkinson?` · tightened to ${t.effectiveDue} (Parkinson's Law)`:''} · ${remaining} day(s) left</div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
           <span class="badge ${badgeClass}">${badgeLabel}</span>
@@ -965,7 +965,7 @@ function renderFlashViewer(){
   const card = stack.cards[flashActiveCard];
   const showing = flashFlipped ? card.back : card.front;
   const label = flashFlipped ? 'Answer' : 'Question';
-  const catBadge = card.category ? `<span style="position:absolute;top:8px;right:14px;font-size:.65rem;font-weight:700;text-transform:uppercase;padding:2px 8px;border-radius:10px;background:#E3EEF8;color:#1c4a66;">${card.category.replace(/</g,'&lt;')}</span>` : '';
+  const catBadge = card.category ? `<span style="position:absolute;top:8px;right:14px;font-size:.65rem;font-weight:700;text-transform:uppercase;padding:2px 8px;border-radius:10px;background:#122233;color:#8ab8ff;">${card.category.replace(/</g,'&lt;')}</span>` : '';
   wrap.innerHTML = `
     <div class="flip-card" id="flipCardEl"><span class="side-label">${label}</span>${catBadge}${showing.replace(/</g,'&lt;') || '(blank)'}</div>
     <div class="flash-nav">
@@ -1104,7 +1104,7 @@ document.getElementById('flashAddBtn').addEventListener('click', ()=>{
 /* ===================== MINDMAP ===================== */
 const canvas = document.getElementById('mindmapCanvas');
 const svg = document.getElementById('mapLines');
-const bubbleColors = ['#FBE3E1','#FBF1DC','#E7F4EB','#E3EEF8','#F1E5F6'];
+const bubbleColors = ['#2a2140','#301a30','#33210f','#33161e','#122233'];
 let dragTarget=null, dragOffX=0, dragOffY=0, dragMoved=false;
 let connectMode=false, connectFirst=null;
 let mmActiveSubject = 0;
@@ -1218,7 +1218,7 @@ function renderLines(){
     const x2 = elB.offsetLeft + elB.offsetWidth/2, y2 = elB.offsetTop + elB.offsetHeight/2;
     const line = document.createElementNS('http://www.w3.org/2000/svg','line');
     line.setAttribute('x1',x1); line.setAttribute('y1',y1); line.setAttribute('x2',x2); line.setAttribute('y2',y2);
-    line.setAttribute('stroke','#3d4f97'); line.setAttribute('stroke-width','2.5');
+    line.setAttribute('stroke','#6a4cf5'); line.setAttribute('stroke-width','2.5');
     svg.appendChild(line);
   });
 }
@@ -1303,7 +1303,7 @@ function renderBoxes(){
       const cardEl = document.createElement('div');
       cardEl.className = 'lcard'+(due?' due':'');
       const dueText = due ? 'ready now' : `unlocks ${fmtCountdown(c.nextReviewTs-now)} (by 11:59pm)`;
-      cardEl.innerHTML = `<div>${c.text}</div><div style="font-size:.68rem;color:#888;">${dueText}</div>
+      cardEl.innerHTML = `<div>${c.text}</div><div style="font-size:.68rem;color:#999;">${dueText}</div>
         <div class="actions">
           <button class="btn small green" ${due?'':'disabled'} onclick="reviewCard(${c.id},true)">Got it</button>
           <button class="btn small red" ${due?'':'disabled'} onclick="reviewCard(${c.id},false)">Still hard</button>
@@ -1522,7 +1522,7 @@ function deleteQuestion(id){
 function renderQList(){
   const list = document.getElementById('qList');
   const questions = data.questionLog.subjects[qActiveSubject].terms[qActiveTerm];
-  if(questions.length===0){ list.innerHTML = '<p style="color:#888;font-size:.85rem;">No questions yet in this term.</p>'; return; }
+  if(questions.length===0){ list.innerHTML = '<p style="color:#999;font-size:.85rem;">No questions yet in this term.</p>'; return; }
   const typeLabel = {frq:'FRQ', mcq:'Multiple choice', tf:'True/False'};
   list.innerHTML = questions.map(q=>`
     <div class="qcard">
@@ -1681,7 +1681,7 @@ function renderPtRunner(){
     wrap.innerHTML = `
       <div class="test-card">
         <h3>Results: ${st.score} / ${st.questions.length} correct</h3>
-        <p style="font-size:.85rem;color:#666;">Anything you missed just got logged in the Mistake Log tab — add an explanation there while it's fresh.</p>
+        <p style="font-size:.85rem;color:#999;">Anything you missed just got logged in the Mistake Log tab — add an explanation there while it's fresh.</p>
         <button class="btn amber" onclick="ptExit()">Done</button>
       </div>`;
   }
@@ -1945,7 +1945,7 @@ searchInput.addEventListener('input', ()=>{
 
   currentSearchResults = results;
   if(results.length===0){
-    searchDropdown.innerHTML='<div class="search-result" style="color:#aaa;">No results</div>';
+    searchDropdown.innerHTML='<div class="search-result" style="color:#8f8f8f;">No results</div>';
   } else {
     searchDropdown.innerHTML = results.slice(0,12).map((r,i)=>`
       <div class="search-result" data-i="${i}">
@@ -1990,7 +1990,7 @@ function renderHome(){
 
   // Upcoming 7 days
   const upcoming = data.tasks.filter(t=>{ const d=daysBetween(today, t.effectiveDue); return d>0 && d<=7; }).sort((a,b)=>a.effectiveDue.localeCompare(b.effectiveDue));
-  document.getElementById('homeUpcoming').innerHTML = upcoming.length ? upcoming.map(t=>`<div class="home-item">▪ ${t.title.replace(/</g,'&lt;')} <span style="color:#888;font-size:.72rem;">${t.effectiveDue}</span></div>`).join('') : '<div class="home-empty">Nothing due in 7 days.</div>';
+  document.getElementById('homeUpcoming').innerHTML = upcoming.length ? upcoming.map(t=>`<div class="home-item">▪ ${t.title.replace(/</g,'&lt;')} <span style="color:#999;font-size:.72rem;">${t.effectiveDue}</span></div>`).join('') : '<div class="home-empty">Nothing due in 7 days.</div>';
 
   // Weak spots from mistakes
   const catCounts = {};
@@ -2090,15 +2090,15 @@ async function removeFriend(id){
 function renderFriends(){
   const reqWrap = document.getElementById('friendRequests');
   const reqs = friendsCache.incoming||[];
-  reqWrap.innerHTML = reqs.length ? reqs.map(r=>`<div class="friend-row"><span>${r.name.replace(/</g,'&lt;')}</span><div style="display:flex;gap:6px;"><button class="btn small green" onclick="acceptFriend('${r.id}','${r.name.replace(/'/g,"\\'")}')">Accept</button><button class="btn small red" onclick="declineFriend('${r.id}')">Decline</button></div></div>`).join('') : '<p style="color:#aaa;font-size:.82rem;">No pending requests.</p>';
+  reqWrap.innerHTML = reqs.length ? reqs.map(r=>`<div class="friend-row"><span>${r.name.replace(/</g,'&lt;')}</span><div style="display:flex;gap:6px;"><button class="btn small green" onclick="acceptFriend('${r.id}','${r.name.replace(/'/g,"\\'")}')">Accept</button><button class="btn small red" onclick="declineFriend('${r.id}')">Decline</button></div></div>`).join('') : '<p style="color:#8f8f8f;font-size:.82rem;">No pending requests.</p>';
   const friendWrap = document.getElementById('friendList');
   const friends = friendsCache.accepted||[];
-  friendWrap.innerHTML = friends.length ? friends.map(f=>`<div class="friend-row"><span>${f.name.replace(/</g,'&lt;')}</span><button class="btn small ghost" onclick="removeFriend('${f.id}')">Remove</button></div>`).join('') : '<p style="color:#aaa;font-size:.82rem;">No friends yet.</p>';
+  friendWrap.innerHTML = friends.length ? friends.map(f=>`<div class="friend-row"><span>${f.name.replace(/</g,'&lt;')}</span><button class="btn small ghost" onclick="removeFriend('${f.id}')">Remove</button></div>`).join('') : '<p style="color:#8f8f8f;font-size:.82rem;">No friends yet.</p>';
 }
 
 async function renderLeaderboard(){
   const wrap = document.getElementById('leaderboard');
-  wrap.innerHTML = '<p style="color:#aaa;font-size:.82rem;">Loading…</p>';
+  wrap.innerHTML = '<p style="color:#8f8f8f;font-size:.82rem;">Loading…</p>';
   try{
     // BUGFIX: this used to query profiles.app_data directly, which Row Level
     // Security blocks for anyone else's row (each user can only see their own
@@ -2116,7 +2116,7 @@ async function renderLeaderboard(){
       rows = (profiles||[]).map(p=>({ id:p.id, name:p.name||'Student', xp:p.xp||0, level:p.level||1 }));
     }
     rows.sort((a,b)=>b.xp-a.xp);
-    wrap.innerHTML = rows.length ? rows.map((r,i)=>`<div class="lb-row ${r.id===currentUserId?'lb-me':''}"><span class="lb-rank">${i+1}</span><span class="lb-name">${r.name.replace(/</g,'&lt;')}${r.id===currentUserId?' (you)':''}</span><span class="lb-xp">Lv ${r.level} · ${r.xp} XP</span></div>`).join('') : '<p style="color:#aaa;font-size:.82rem;">Nobody to show yet.</p>';
+    wrap.innerHTML = rows.length ? rows.map((r,i)=>`<div class="lb-row ${r.id===currentUserId?'lb-me':''}"><span class="lb-rank">${i+1}</span><span class="lb-name">${r.name.replace(/</g,'&lt;')}${r.id===currentUserId?' (you)':''}</span><span class="lb-xp">Lv ${r.level} · ${r.xp} XP</span></div>`).join('') : '<p style="color:#8f8f8f;font-size:.82rem;">Nobody to show yet.</p>';
   }catch(e){ wrap.innerHTML='<p style="color:var(--red);font-size:.82rem;">Could not load leaderboard.</p>'; }
 }
 
@@ -2124,14 +2124,14 @@ async function renderLeaderboard(){
 function renderPtList(){
   const wrap = document.getElementById('ptList');
   const tests = data.questionLog.practiceTests;
-  if(tests.length===0){ wrap.innerHTML = '<p style="color:#888;font-size:.85rem;">No practice tests yet — create one above.</p>'; return; }
+  if(tests.length===0){ wrap.innerHTML = '<p style="color:#999;font-size:.85rem;">No practice tests yet — create one above.</p>'; return; }
   wrap.innerHTML = tests.map(t=>{
     const subj = data.questionLog.subjects[t.subjectIndex];
     const subjName = subj ? subj.name : '(deleted subject)';
     return `<div class="pt-card">
       <div style="flex:1;min-width:200px;">
         <input value="${t.name.replace(/"/g,'&quot;')}" onchange="renameTest(${t.id}, this.value)">
-        <div style="font-size:.75rem;color:#888;margin-top:4px;">${subjName} · Term ${t.term} · ${t.questionIds.length} question(s)</div>
+        <div style="font-size:.75rem;color:#999;margin-top:4px;">${subjName} · Term ${t.term} · ${t.questionIds.length} question(s)</div>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;">
         <button class="btn small green" onclick="startPracticeTest(${t.id})">Start</button>
@@ -2226,7 +2226,7 @@ document.getElementById('mlAddBtn').addEventListener('click', ()=>{
 function renderMistakeList(){
   const wrap = document.getElementById('mistakeList');
   const mistakes = data.questionLog.mistakes.slice().sort((a,b)=>b.ts-a.ts);
-  if(mistakes.length===0){ wrap.innerHTML = '<p style="color:#888;font-size:.85rem;">No mistakes logged yet.</p>'; return; }
+  if(mistakes.length===0){ wrap.innerHTML = '<p style="color:#999;font-size:.85rem;">No mistakes logged yet.</p>'; return; }
   const typeLabel = {frq:'FRQ', mcq:'Multiple choice', tf:'True/False'};
   wrap.innerHTML = mistakes.map(m=>`
     <div class="mistake-card">
@@ -2235,7 +2235,7 @@ function renderMistakeList(){
         <span class="qtype-badge">${m.subjectName} · Term ${m.term}</span>
         ${m.category?`<span class="qcat-badge">${m.category.replace(/</g,'&lt;')}</span>`:''}
         ${m.difficulty?`<span class="qdiff-badge">Difficulty ${m.difficulty}/10</span>`:''}
-        ${m.manual?`<span style="font-size:.65rem;background:#F1E5F6;color:#6b3d8a;padding:2px 6px;border-radius:8px;font-weight:700;">Manual</span>`:''}
+        ${m.manual?`<span style="font-size:.65rem;background:#2a2140;color:#b79aff;padding:2px 6px;border-radius:8px;font-weight:700;">Manual</span>`:''}
       </div>
       ${m.image?`<img class="qimg-thumb" src="${m.image}">`:''}
       <div class="answer-compare">
@@ -2412,7 +2412,7 @@ function showCalDayDetail(dateStr){
   let html=`<h3>${dateStr}</h3>`;
   if(tasks.length) html+=`<strong>Tasks due:</strong>`+tasks.map(t=>`<div class="home-item">▪ ${t.title.replace(/</g,'&lt;')}</div>`).join('');
   if(mistakes.length) html+=`<strong>Mistakes logged:</strong>`+mistakes.map(m=>`<div class="home-item" style="color:var(--red);">✕ ${m.prompt.slice(0,60).replace(/</g,'&lt;')}</div>`).join('');
-  if(!tasks.length&&!mistakes.length) html+='<p style="color:#aaa;font-size:.82rem;">Nothing logged for this day.</p>';
+  if(!tasks.length&&!mistakes.length) html+='<p style="color:#8f8f8f;font-size:.82rem;">Nothing logged for this day.</p>';
   detail.innerHTML=html;
 }
 document.getElementById('calPrevBtn').addEventListener('click', ()=>{ calMonth--; if(calMonth<0){calMonth=11;calYear--;} calSelectedDay=null; renderCalendar(); });
@@ -2473,7 +2473,7 @@ function renderIcsReview(){
   const wrap = document.getElementById('icsReviewList');
   const btn = document.getElementById('icsImportBtn');
   if(icsParsedEvents.length===0){ wrap.innerHTML=''; btn.style.display='none'; return; }
-  wrap.innerHTML = `<p style="font-size:.8rem;color:#666;margin-bottom:8px;">${icsParsedEvents.length} event(s) found. Uncheck any you don't want, and set a workload type/amount if you want Parkinson's Law day-by-day breakdowns.</p>` +
+  wrap.innerHTML = `<p style="font-size:.8rem;color:#999;margin-bottom:8px;">${icsParsedEvents.length} event(s) found. Uncheck any you don't want, and set a workload type/amount if you want Parkinson's Law day-by-day breakdowns.</p>` +
     icsParsedEvents.map((ev,i)=>`
     <div class="row" style="align-items:center;margin-bottom:8px;border-bottom:1px solid #eee;padding-bottom:8px;">
       <div style="flex:0 0 auto;"><input type="checkbox" data-ics-i="${i}" class="icsIncludeCheck" ${ev.include?'checked':''} style="width:auto;"></div>
