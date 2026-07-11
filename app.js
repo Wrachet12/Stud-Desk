@@ -337,6 +337,15 @@ document.querySelectorAll('.tab').forEach(btn=>{
     document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById(btn.dataset.tab).classList.add('active');
+    // BUGFIX (the real "connections don't save" culprit): connection lines
+    // are positioned from offsetLeft/offsetWidth measurements, and while the
+    // Study panel is hidden (display:none — which it always is at login,
+    // since Home is the active tab) every element measures as ZERO. So on
+    // each reload, all lines were silently drawn as invisible dots at (0,0)
+    // and never redrawn when the tab became visible. The connections were
+    // saving and loading fine all along — they just couldn't be seen.
+    // Redraw them the moment the Study tab actually becomes visible.
+    if(btn.dataset.tab === 'study' && typeof renderLines === 'function') renderLines();
   });
 });
 document.querySelectorAll('.subtab').forEach(btn=>{
@@ -1209,7 +1218,7 @@ function renderLines(){
     const x2 = elB.offsetLeft + elB.offsetWidth/2, y2 = elB.offsetTop + elB.offsetHeight/2;
     const line = document.createElementNS('http://www.w3.org/2000/svg','line');
     line.setAttribute('x1',x1); line.setAttribute('y1',y1); line.setAttribute('x2',x2); line.setAttribute('y2',y2);
-    line.setAttribute('stroke','#b3a98a'); line.setAttribute('stroke-width','2.5');
+    line.setAttribute('stroke','#3d4f97'); line.setAttribute('stroke-width','2.5');
     svg.appendChild(line);
   });
 }
