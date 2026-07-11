@@ -37,8 +37,8 @@ button{font-family:'Inter',system-ui,sans-serif;cursor:pointer;}
 .mono{font-family:'Inter',system-ui,sans-serif;font-variant-numeric:tabular-nums;letter-spacing:.02em;}
 .halftone{} /* retired texture from previous theme — kept as no-op so HTML doesn't need edits */
 
-/* dark-only design: hide the now-inert dark mode toggle in settings */
-label:has(> #darkModeToggle){display:none !important;}
+/* theme: dark is the default; the settings toggle switches on the light
+   (cream / blue / white) theme below */
 
 /* ---------- AUTH OVERLAY ---------- */
 #authOverlay{
@@ -320,7 +320,67 @@ body.dark-mode .bubble{color:#fff;}
   .userbox{padding-left:8px;}
 }
 
-/* ---------- DARK MODE: design is dark-only; class is inert ---------- */
+/* ---------- LIGHT MODE (cream / blue / white) ----------
+   Optional theme from Settings. Three-color system: cream page canvas,
+   white cards, blue for structure/accents — echoing the earlier designs.
+   Dark stays the default. */
+body.light-mode{
+  --bg:#F7F3E8;              /* cream canvas */
+  --surface:#ffffff;         /* white cards */
+  --surface2:#eef1f9;        /* pale blue-tinted raised surface */
+  --paper:#ffffff;
+  --paper-line:#c9d2e8;      /* soft blue hairline */
+  --hairline-soft:#dde3f0;
+  --ink:#1c2540;             /* deep blue-navy text */
+  --text:#1c2540;
+  --text-dim:#5a6a94;        /* muted blue secondary text */
+  --accent:#2456c4;          /* blue accent for links/focus/selection */
+  --purple:#3d4f97;
+}
+body.light-mode .btn{background:#eef1f9;color:var(--ink);}
+body.light-mode .btn:hover{background:#dde3f0;}
+body.light-mode .btn.amber{background:#2456c4;color:#fff;}   /* primary CTA: blue pill on light */
+body.light-mode .btn.amber:hover{background:#1c469f;}
+body.light-mode .btn.blue{background:#dde3f0;color:var(--ink);}
+body.light-mode .btn.green{background:#e2ede4;color:#22532f;}
+body.light-mode .btn.red{background:#f6dcdb;color:#7a2420;}
+body.light-mode .btn.ghost{background:#eef1f9;color:var(--ink);}
+body.light-mode .level-pill{background:#2456c4;color:#fff;}
+body.light-mode .xpbar-wrap{background:#dde3f0;}
+body.light-mode .userbox button,body.light-mode #accountBtn{background:#eef1f9;color:var(--ink);}
+body.light-mode .userbox button:hover,body.light-mode #accountBtn:hover{background:#dde3f0;}
+body.light-mode .tab{color:var(--text-dim);}
+body.light-mode .tab.active{background:#2456c4;color:#fff;}
+body.light-mode .pill-toggle.active,body.light-mode .subtab.active,body.light-mode .subject-tabs button.active,body.light-mode .auth-tab.active{background:#2456c4;color:#fff;}
+body.light-mode .badge.flex-low{background:#f6dcdb;color:#7a2420;}
+body.light-mode .badge.flex-mid{background:#fdf2dc;color:#5b430f;}
+body.light-mode .badge.flex-high{background:#e2ede4;color:#22532f;}
+body.light-mode .tip{background:#fdf6e3;border-left-color:#c9a53d;color:#5b430f;}
+body.light-mode .tip.risk{background:#f6dcdb;border-left-color:#a7282b;color:#7a2420;}
+body.light-mode .tip.good{background:#e2ede4;border-left-color:#2f7a44;color:#22532f;}
+body.light-mode .seg.good{background:#9fd9af;}
+body.light-mode .seg.risky{background:#ef9d99;}
+body.light-mode .seg.neutral{background:#e4e0d2;}
+body.light-mode .home-item{color:#3a4260;}
+body.light-mode .daily-table tr.done td{color:#9a9a9a;}
+body.light-mode #mindmapViewport{background:#fffdf6;}
+body.light-mode #mindmapCanvas{background:
+  repeating-linear-gradient(0deg,transparent,transparent 27px,#e8e2cd 28px),
+  repeating-linear-gradient(90deg,transparent,transparent 27px,#e8e2cd 28px);
+  background-color:#fffdf6;}
+body.light-mode .bubble{color:#fff;}  /* bubble tints stay dark; white text still reads */
+body.light-mode .cal-event{background:#fdf2dc;color:#5b430f;}
+body.light-mode .cal-event.cal-ev-task{background:#e2ede4;color:#22532f;}
+body.light-mode .cal-event.cal-ev-mistake{background:#f6dcdb;color:#7a2420;}
+body.light-mode .cal-day.today{box-shadow:0 0 0 1px #2456c4;}
+body.light-mode .toast{background:#1c2540;color:#fff;}
+body.light-mode .timer-display{background:radial-gradient(circle at 32% 22%, rgba(36,86,196,.12), transparent 60%), #ffffff;}
+body.light-mode .qdiff-badge{background:#e3eef8;color:#1c4a66;}
+body.light-mode .search-dropdown{background:#ffffff;}
+body.light-mode #authOverlay{background:
+  radial-gradient(60% 50% at 70% 10%, rgba(36,86,196,.14) 0%, transparent 70%),
+  #F7F3E8;}
+/* legacy class from the pre-redesign toggle: keep inert */
 body.dark-mode{}
 
 /* ---------- SEARCH BAR ---------- */

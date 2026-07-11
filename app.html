@@ -6,7 +6,7 @@
 <title>StudyCore — Plan, Time, Note, Learn</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=10">
+<link rel="stylesheet" href="styles.css?v=11">
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5483196886768719" crossorigin="anonymous"></script>
 </head>
 <body>
@@ -73,7 +73,7 @@
     <input id="settingsName" placeholder="Your name">
     <label style="margin-top:14px;display:flex;align-items:center;gap:10px;cursor:pointer;">
       <input type="checkbox" id="darkModeToggle" style="width:auto;">
-      Dark mode
+      Light mode (cream)
     </label>
     <div style="display:flex;gap:10px;margin-top:18px;">
       <button class="btn amber" id="saveSettingsBtn">Save</button>
@@ -548,10 +548,17 @@
 <section id="social" class="panel">
   <div class="card">
     <h2>Friends</h2>
-    <p style="font-size:.85rem;color:#999;">Add friends by their exact display name. Once accepted, you'll appear on each other's leaderboard.</p>
+    <p style="font-size:.85rem;color:#999;">Add friends by their Friend ID — find yours below and share it. Once accepted, you'll appear on each other's leaderboard.</p>
     <div class="row" style="align-items:flex-end;">
-      <div style="flex:3"><label>Display name to add</label><input id="friendInput" placeholder="Their exact display name"></div>
+      <div style="flex:3"><label>Friend ID to add</label><input id="friendInput" placeholder="e.g. 4F7A9C2E" style="text-transform:uppercase;"></div>
       <div style="flex:1"><button class="btn amber" id="friendAddBtn" style="width:100%;margin-top:0">Send request</button></div>
+    </div>
+    <div class="row" style="align-items:center;margin-top:10px;">
+      <div style="flex:3">
+        <label>Your Friend ID — share this with people so they can add you</label>
+        <div id="myFriendCode" class="share-code-box" style="display:inline-block;min-width:140px;">…</div>
+      </div>
+      <div style="flex:1"><button class="btn ghost small" id="copyFriendCodeBtn">Copy my ID</button></div>
     </div>
     <div class="row" style="margin-top:16px;gap:20px;">
       <div style="flex:1">
@@ -654,8 +661,8 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="config.js?v=10"></script>
-<script src="app.js?v=10"></script>
+<script src="config.js?v=11"></script>
+<script src="app.js?v=11"></script>
 <script>
   if(location.hash === '#signup'){ try{ switchAuthTab('signup'); }catch(e){} }
 </script>

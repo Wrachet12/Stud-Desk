@@ -1610,11 +1610,29 @@ function ptComputeResults(){
     if(q.type==='mcq') isCorrect = String(ptRunnerState.answers[i]) === String(q.answer);
     else if(q.type==='tf') isCorrect = String(ptRunnerState.answers[i]) === String(q.answer);
     else isCorrect = ptRunnerState.selfChecks[i] === true;
-    if(isCorrect){ correctCount++; return; }
+    if(isCorrect){
+      correctCount++;
+      // BUGFIX: getting a question RIGHT on a retake used to leave its old
+      // mistake entry sitting in the log forever — which read as "even when
+      // I answer correctly it still shows as a mistake." Now a correct
+      // answer auto-resolves any open mistake for that same question.
+      data.questionLog.mistakes.forEach(m=>{
+        if(!m.resolved && m.prompt===q.prompt && m.subjectName===ptRunnerState.subjectName) m.resolved = true;
+      });
+      return;
+    }
     const correctDisplay = q.type==='mcq' ? `${['A','B','C','D'][q.answer]}. ${q.options[q.answer]}` : q.type==='tf' ? (q.answer==='true'?'True':'False') : (q.answer || '(no model answer given)');
     let userDisplay;
     if(q.type==='mcq') userDisplay = (ptRunnerState.answers[i]!=null) ? `${['A','B','C','D'][ptRunnerState.answers[i]]}. ${q.options[ptRunnerState.answers[i]]}` : '(no answer)';
     else userDisplay = ptRunnerState.answers[i] || '(no answer)';
+    // BUGFIX: missing the same question across retakes used to stack a new
+    // duplicate mistake entry every single time. Now it refreshes the
+    // existing open entry (latest wrong answer + timestamp) instead.
+    const existing = data.questionLog.mistakes.find(m=>!m.resolved && m.prompt===q.prompt && m.subjectName===ptRunnerState.subjectName);
+    if(existing){
+      existing.ts = Date.now(); existing.userAnswer = userDisplay; existing.correctAnswer = correctDisplay;
+      return;
+    }
     data.questionLog.mistakes.push({
       id: (data.questionLog.mistakeSeq = (data.questionLog.mistakeSeq||0)+1), ts: Date.now(), subjectName: ptRunnerState.subjectName, term: ptRunnerState.test.term,
       prompt: q.prompt, type: q.type, correctAnswer: correctDisplay, userAnswer: userDisplay, explanation: ''
@@ -1690,13 +1708,15 @@ function renderPtRunner(){
 
 /* ===================== ACCOUNT SETTINGS + DARK MODE ===================== */
 function applyDarkMode(on){
-  document.body.classList.toggle('dark-mode', on);
+  // semantics flipped with the dark redesign: dark is the DEFAULT theme,
+  // and this toggle now switches ON the light (cream/blue/white) theme.
+  document.body.classList.toggle('light-mode', on);
   const toggle = document.getElementById('darkModeToggle');
   if(toggle) toggle.checked = on;
 }
 document.getElementById('accountBtn').addEventListener('click', ()=>{
   document.getElementById('settingsName').value = data.displayName || document.getElementById('userName').textContent;
-  document.getElementById('darkModeToggle').checked = data.darkMode || false;
+  document.getElementById('darkModeToggle').checked = data.lightMode || false;
   document.getElementById('accountModal').style.display='flex';
 });
 document.getElementById('closeSettingsBtn').addEventListener('click', ()=>{ document.getElementById('accountModal').style.display='none'; });
@@ -1751,10 +1771,10 @@ document.getElementById('closeAchievementLogX').addEventListener('click', ()=>{ 
 
 document.getElementById('saveSettingsBtn').addEventListener('click', async ()=>{
   const newName = document.getElementById('settingsName').value.trim();
-  const dark = document.getElementById('darkModeToggle').checked;
+  const light = document.getElementById('darkModeToggle').checked;
   if(newName){ data.displayName = newName; document.getElementById('userName').textContent = newName; }
-  data.darkMode = dark;
-  applyDarkMode(dark);
+  data.lightMode = light;
+  applyDarkMode(light);
   // also save the name back to the profiles table
   if(newName && currentUserId){
     try{ await sb.from('profiles').update({ name: newName }).eq('id', currentUserId); }catch(e){}
@@ -1821,9 +1841,9 @@ const navSearchItems = [
   { label:'Weekly recap', preview:'Your last 7 days at a glance', run:()=>openModalNav('weeklyRecapModal', renderWeeklyRecap) },
   { label:'Achievements', preview:'Unlockable milestones and badges', run:()=>openModalNav('achievementLogModal', renderAchievementLog) },
   { label:'Achievement log', preview:'Unlockable milestones and badges', run:()=>openModalNav('achievementLogModal', renderAchievementLog) },
-  { label:'Account', preview:'Your name, dark mode, and settings', run:()=>openModalNav('accountModal', ()=>{
+  { label:'Account', preview:'Your name, light mode, and settings', run:()=>openModalNav('accountModal', ()=>{
       document.getElementById('settingsName').value = data.displayName || document.getElementById('userName').textContent;
-      document.getElementById('darkModeToggle').checked = data.darkMode || false;
+      document.getElementById('darkModeToggle').checked = data.lightMode || false;
     }) },
 ];
 
@@ -1994,7 +2014,7 @@ function renderHome(){
 
   // Weak spots from mistakes
   const catCounts = {};
-  data.questionLog.mistakes.forEach(m=>{ if(m.subjectName) catCounts[m.subjectName]=(catCounts[m.subjectName]||0)+1; });
+  data.questionLog.mistakes.forEach(m=>{ if(!m.resolved && m.subjectName) catCounts[m.subjectName]=(catCounts[m.subjectName]||0)+1; });
   const sorted = Object.entries(catCounts).sort((a,b)=>b[1]-a[1]);
   document.getElementById('homeWeakness').innerHTML = sorted.length ? sorted.slice(0,4).map(([cat,ct])=>`<div class="home-item">▲ ${cat.replace(/</g,'&lt;')} <span style="color:var(--red);font-size:.72rem;">${ct} mistake(s)</span></div>`).join('') : '<div class="home-empty">No mistakes logged yet.</div>';
 
@@ -2005,7 +2025,7 @@ function renderHome(){
     <div class="home-item" style="font-size:.75rem;color:#999;">${100-(data.xp%100)} XP to next level</div>`;
 
   // Unreviewed mistakes (no explanation yet)
-  const unreviewed = data.questionLog.mistakes.filter(m=>!m.explanation || m.explanation.trim()==='');
+  const unreviewed = data.questionLog.mistakes.filter(m=>!m.resolved && (!m.explanation || m.explanation.trim()===''));
   document.getElementById('homeMistakes').innerHTML = unreviewed.length ? unreviewed.slice(0,4).map(m=>`<div class="home-item">✕ ${m.prompt.slice(0,50).replace(/</g,'&lt;')}</div>`).join('')+(unreviewed.length>4?`<div class="home-empty">+${unreviewed.length-4} more</div>`:'') : '<div class="home-empty">All mistakes reviewed!</div>';
 }
 
@@ -2049,12 +2069,38 @@ async function loadFriendsData(){
   }catch(e){ console.error('Could not load friends', e); }
 }
 
-document.getElementById('friendAddBtn').addEventListener('click', async ()=>{
-  const name = document.getElementById('friendInput').value.trim();
-  if(!name){ showToast('Enter a display name.'); return; }
+/* Friend ID: every account gets a unique shareable 8-character code
+   (requires migration_3.sql to have been run in Supabase). It's loaded on
+   login; brand-new accounts that somehow don't have one yet get one
+   generated and saved here. */
+let myFriendCode = null;
+async function ensureFriendCode(){
   try{
-    const { data: profiles } = await sb.from('leaderboard').select('id,name,username').or(`name.ilike.${name},username.ilike.${name}`);
-    if(!profiles || profiles.length===0){ showToast('No user found with that display name.'); return; }
+    const { data: rows } = await sb.from('leaderboard').select('friend_code').eq('id', currentUserId).limit(1);
+    myFriendCode = rows && rows[0] && rows[0].friend_code;
+    if(!myFriendCode){
+      // generate + save, retrying a couple of times on the off chance of a collision
+      for(let attempt=0; attempt<3 && !myFriendCode; attempt++){
+        const code = Array.from({length:8},()=> '0123456789ABCDEF'[Math.floor(Math.random()*16)]).join('');
+        const { error } = await sb.from('profiles').update({ friend_code: code }).eq('id', currentUserId);
+        if(!error) myFriendCode = code;
+      }
+    }
+  }catch(e){ console.error('Friend code load failed', e); }
+  const el = document.getElementById('myFriendCode');
+  if(el) el.textContent = myFriendCode || 'Unavailable — run migration_3.sql in Supabase';
+}
+document.getElementById('copyFriendCodeBtn').addEventListener('click', ()=>{
+  if(!myFriendCode){ showToast('No Friend ID loaded yet.'); return; }
+  navigator.clipboard.writeText(myFriendCode).then(()=>showToast('Friend ID copied!'));
+});
+document.getElementById('friendAddBtn').addEventListener('click', async ()=>{
+  const code = document.getElementById('friendInput').value.trim().toUpperCase();
+  if(!code){ showToast('Enter a Friend ID.'); return; }
+  if(myFriendCode && code === myFriendCode){ showToast("That's your own Friend ID!"); return; }
+  try{
+    const { data: profiles } = await sb.from('leaderboard').select('id,name,username,friend_code').eq('friend_code', code).limit(1);
+    if(!profiles || profiles.length===0){ showToast('No user found with that Friend ID — double-check it.'); return; }
     const target = profiles[0];
     if(target.id === currentUserId){ showToast("That's you!"); return; }
     if(friendsCache.accepted.some(f=>f.id===target.id)){ showToast('Already friends.'); return; }
@@ -2225,17 +2271,18 @@ document.getElementById('mlAddBtn').addEventListener('click', ()=>{
 /* update renderMistakeList to show image, category, difficulty */
 function renderMistakeList(){
   const wrap = document.getElementById('mistakeList');
-  const mistakes = data.questionLog.mistakes.slice().sort((a,b)=>b.ts-a.ts);
+  const mistakes = data.questionLog.mistakes.slice().sort((a,b)=>(a.resolved?1:0)-(b.resolved?1:0) || b.ts-a.ts);
   if(mistakes.length===0){ wrap.innerHTML = '<p style="color:#999;font-size:.85rem;">No mistakes logged yet.</p>'; return; }
   const typeLabel = {frq:'FRQ', mcq:'Multiple choice', tf:'True/False'};
   wrap.innerHTML = mistakes.map(m=>`
-    <div class="mistake-card">
-      <div class="qcard-prompt">${m.prompt.replace(/</g,'&lt;')}</div>
+    <div class="mistake-card" style="${m.resolved?'opacity:.5;':''}">
+      <div class="qcard-prompt">${m.resolved?'✓ ':''}${m.prompt.replace(/</g,'&lt;')}</div>
       <div class="qmeta">
         <span class="qtype-badge">${m.subjectName} · Term ${m.term}</span>
         ${m.category?`<span class="qcat-badge">${m.category.replace(/</g,'&lt;')}</span>`:''}
         ${m.difficulty?`<span class="qdiff-badge">Difficulty ${m.difficulty}/10</span>`:''}
         ${m.manual?`<span style="font-size:.65rem;background:#2a2140;color:#b79aff;padding:2px 6px;border-radius:8px;font-weight:700;">Manual</span>`:''}
+        ${m.resolved?`<span style="font-size:.65rem;background:#12271a;color:#4ade80;padding:2px 6px;border-radius:8px;font-weight:700;">Resolved</span>`:''}
       </div>
       ${m.image?`<img class="qimg-thumb" src="${m.image}">`:''}
       <div class="answer-compare">
@@ -2244,9 +2291,27 @@ function renderMistakeList(){
       </div>
       <label style="margin-top:4px;">Why did I miss this?</label>
       <textarea style="min-height:60px;" oninput="updateMistakeExplanation(${m.id}, this.value)">${m.explanation||''}</textarea>
-      <button class="btn small red" style="margin-top:6px;" onclick="deleteMistake(${m.id})">Delete</button>
+      <div class="pillgroup" style="margin-top:6px;">
+        ${m.resolved
+          ? `<button class="btn small ghost" onclick="resolveMistake(${m.id}, false)">Mark unresolved</button>`
+          : `<button class="btn small green" onclick="resolveMistake(${m.id}, true)">✓ Done — I've got it now</button>`}
+        <button class="btn small red" onclick="deleteMistake(${m.id})">Delete</button>
+      </div>
     </div>`).join('');
 }
+// BUGFIX: the Delete button always called deleteMistake(), but that function
+// was never defined anywhere — every click threw a silent ReferenceError,
+// which is exactly why deleting never worked.
+function deleteMistake(id){
+  data.questionLog.mistakes = data.questionLog.mistakes.filter(m=>m.id!==id);
+  renderMistakeList(); renderHome(); scheduleSave();
+}
+function resolveMistake(id, resolved){
+  const m = data.questionLog.mistakes.find(m=>m.id===id);
+  if(m){ m.resolved = resolved; }
+  renderMistakeList(); renderHome(); scheduleSave();
+}
+
 
 /* ===================== GRADE TRACKER ===================== */
 let gtActiveSubject = 0, gtActiveTerm = 1;
@@ -2542,6 +2607,7 @@ async function renderAll(){
   renderFeynmanStatus();
   renderQuestionLog();
   await loadFriendsData();
+  ensureFriendCode();
   renderFriends();
   renderLeaderboard();
   renderCalendar();
@@ -2550,7 +2616,7 @@ async function renderAll(){
   buildSchedule();
   renderSchedule();
   renderGradeTracker();
-  applyDarkMode(data.darkMode||false);
+  applyDarkMode(data.lightMode||false);
   // restore display name if saved
   if(data.displayName) document.getElementById('userName').textContent = data.displayName;
 }
