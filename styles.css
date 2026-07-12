@@ -472,3 +472,66 @@ body.dark-mode{}
   .home-grid{grid-template-columns:1fr;}
   .topbar-center{display:none;}
 }
+
+/* ============================================================
+   THEME ACCENTS — Dark Galactic Purple (dark) / Blue (light)
+   Appended last so the light-mode overrides always win.
+   ============================================================ */
+
+/* ---- DARK (default): galactic purple ---- */
+#weeklyRecapBtn,#achievementLogBtn,#accountBtn,#logoutBtn{
+  background:linear-gradient(145deg,#2b1656,#1c0e3d);color:#cbb8ff;
+}
+#weeklyRecapBtn:hover,#achievementLogBtn:hover,#accountBtn:hover,#logoutBtn:hover{
+  background:linear-gradient(145deg,#38208a,#241245);color:#fff;
+}
+/* mind map bubbles — overrides the per-bubble inline color from saved data */
+.bubble{
+  background:linear-gradient(145deg,#2b1656,#1a0d38) !important;color:#e4dbff !important;
+  box-shadow:inset 0 .5px 0 rgba(203,184,255,.25), 0 6px 18px rgba(0,0,0,.4);
+}
+/* Leitner boxes */
+.box-col{background:linear-gradient(180deg,#1d1038,#160b2c);border-color:#35206b;}
+.box-col h4{color:#cbb8ff;}
+.lcard{background:#241245;border-color:#3a2570;}
+.lcard.due{border-color:#7c5cff;}
+/* Subject 1–5 pill tabs (mind map, notes, grades) */
+.subject-tabs button{background:#241245;color:#b9a5f2;}
+.subject-tabs button.active{background:#5b34b3;color:#fff;}
+/* Weekly Recap / Achievements modal cards: galactic purple ground, yellow text kept */
+#weeklyRecapModal .modal-card, #achievementLogModal .modal-card{
+  background:linear-gradient(160deg,#1d0f3c,#12082a);
+}
+
+/* ---- LIGHT MODE: same elements in blue ---- */
+body.light-mode #weeklyRecapBtn,body.light-mode #achievementLogBtn,
+body.light-mode #accountBtn,body.light-mode #logoutBtn{
+  background:linear-gradient(145deg,#2d63d9,#1c469f);color:#fff;
+}
+body.light-mode #weeklyRecapBtn:hover,body.light-mode #achievementLogBtn:hover,
+body.light-mode #accountBtn:hover,body.light-mode #logoutBtn:hover{
+  background:linear-gradient(145deg,#3a74ef,#2456c4);
+}
+body.light-mode .bubble{
+  background:linear-gradient(145deg,#2d63d9,#173e8f) !important;color:#fff !important;
+  box-shadow:inset 0 .5px 0 rgba(255,255,255,.3), 0 6px 18px rgba(28,58,130,.3);
+}
+/* the previously-purple brand marks go blue in light mode */
+body.light-mode .brand .lamp,body.light-mode .auth-brand .lamp{
+  background:linear-gradient(135deg,#2d63d9,#123a8a);
+  box-shadow:0 0 14px 3px rgba(36,86,196,.5);
+}
+body.light-mode .xpbar-fill{background:linear-gradient(90deg,#2d63d9,#123a8a);}
+/* timer digits blue in light mode */
+body.light-mode .timer-display .time{color:#2456c4;}
+/* light-mode Leitner + subject tabs return to light styling with blue accents */
+body.light-mode .box-col{background:#eef1f9;border-color:#c9d2e8;}
+body.light-mode .box-col h4{color:#2456c4;}
+body.light-mode .lcard{background:#ffffff;border-color:#c9d2e8;}
+body.light-mode .lcard.due{border-color:#2456c4;}
+body.light-mode .subject-tabs button{background:#eef1f9;color:#5a6a94;}
+body.light-mode .subject-tabs button.active{background:#2456c4;color:#fff;}
+/* Weekly Recap / Achievements modals: deep navy ground in light mode, yellow text kept */
+body.light-mode #weeklyRecapModal .modal-card, body.light-mode #achievementLogModal .modal-card{
+  background:linear-gradient(160deg,#132a5c,#0c1c40);
+}
