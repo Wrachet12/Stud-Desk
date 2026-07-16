@@ -6,7 +6,7 @@
 <title>StudyCore — Plan, Time, Note, Learn</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=16">
+<link rel="stylesheet" href="styles.css?v=17">
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5483196886768719" crossorigin="anonymous"></script>
 </head>
 <body>
@@ -111,9 +111,7 @@
   <button class="tab" data-tab="timer">Timer</button>
   <button class="tab" data-tab="notes">Notes</button>
   <button class="tab" data-tab="qlog">Question Log</button>
-  <button class="tab" data-tab="grades">Grades</button>
   <button class="tab" data-tab="social">Friends</button>
-  <button class="tab" data-tab="calendar">Calendar</button>
   <button class="tab" data-tab="feedback" id="feedbackTabBtn" style="display:none;">Daily Feedback</button>
 </nav>
 
@@ -258,6 +256,13 @@
       <button class="pill-toggle risk" id="filterRisk">Most → least flexible — Risky</button>
     </div>
     <div id="taskList"></div>
+  </div>
+  <div class="card">
+    <h2>Import from school calendar (.ics)</h2>
+    <p style="font-size:.85rem;color:#999;">Most school platforms (Google Classroom, Canvas, Schoology) can export or share a calendar feed as a <code>.ics</code> file. Upload it here to pull assignments straight into your Planner.</p>
+    <input type="file" id="icsFileInput" accept=".ics">
+    <div id="icsReviewList" style="margin-top:14px;"></div>
+    <button class="btn amber" id="icsImportBtn" style="margin-top:10px;display:none;">Import selected into Planner</button>
   </div>
 </section>
 
@@ -523,50 +528,7 @@
   </div>
 </section>
 
-<!-- GRADES TAB -->
-<section id="grades" class="panel">
-  <div class="card">
-    <h2>Grade tracker</h2>
-    <p style="font-size:.85rem;color:#999;">Track major and quiz grades per term for up to 5 subjects. Semester 1 = average of Terms 1–2, Semester 2 = average of Terms 3–4, Final = average of both semesters.</p>
-    <div class="subject-tabs" id="gtSubjectTabs"></div>
-    <div class="row" style="align-items:flex-end;">
-      <div style="flex:2"><label>Subject name</label><input id="gtSubjectName" placeholder="Subject name"></div>
-      <div style="flex:1"><label>Major grade weight (%)</label><input id="gtMajorWeight" type="number" min="0" max="100" value="70"></div>
-      <div style="flex:1"><label>Quiz grade weight (%)</label><input id="gtQuizWeight" type="number" min="0" max="100" value="30" disabled></div>
-    </div>
-    <div class="pillgroup" id="gtTermTabs" style="margin-top:10px;"></div>
-    <div class="row" style="margin-top:10px;">
-      <div style="flex:1">
-        <h3>Major grades <span id="gtMajorAvg" style="font-weight:400;font-size:.82rem;color:#999;"></span></h3>
-        <div id="gtMajorList"></div>
-        <div class="row" style="align-items:flex-end;margin-top:6px;">
-          <div style="flex:2"><input id="gtMajorLabel" placeholder="e.g. Unit 3 Test"></div>
-          <div style="flex:1"><input id="gtMajorScore" type="number" min="0" placeholder="Score"></div>
-          <div style="flex:1"><input id="gtMajorTotal" type="number" min="1" placeholder="Out of" value="100"></div>
-          <div style="flex:0 0 auto;"><button class="btn small amber" id="gtMajorAddBtn">+ Add</button></div>
-        </div>
-      </div>
-      <div style="flex:1">
-        <h3>Quiz grades <span id="gtQuizAvg" style="font-weight:400;font-size:.82rem;color:#999;"></span></h3>
-        <div id="gtQuizList"></div>
-        <div class="row" style="align-items:flex-end;margin-top:6px;">
-          <div style="flex:2"><input id="gtQuizLabel" placeholder="e.g. Quiz 4"></div>
-          <div style="flex:1"><input id="gtQuizScore" type="number" min="0" placeholder="Score"></div>
-          <div style="flex:1"><input id="gtQuizTotal" type="number" min="1" placeholder="Out of" value="100"></div>
-          <div style="flex:0 0 auto;"><button class="btn small amber" id="gtQuizAddBtn">+ Add</button></div>
-        </div>
-      </div>
-    </div>
-    <p style="margin-top:12px;font-weight:600;" id="gtTermAvg"></p>
-  </div>
 
-  <div class="card">
-    <h2>All subjects overview</h2>
-    <div style="overflow-x:auto;">
-      <table class="daily-table" id="gtOverviewTable"></table>
-    </div>
-  </div>
-</section>
 
 <!-- FRIENDS & LEADERBOARD TAB -->
 <section id="social" class="panel">
@@ -609,28 +571,7 @@
   </div>
 </section>
 
-<!-- CALENDAR TAB -->
-<section id="calendar" class="panel">
-  <div class="card">
-    <h2>Calendar</h2>
-    <div class="cal-nav">
-      <button class="btn small ghost" id="calPrevBtn">‹</button>
-      <span id="calMonthLabel" style="font-family:Inter,sans-serif;font-size:1.1rem;font-weight:600;letter-spacing:-.03em;"></span>
-      <button class="btn small ghost" id="calNextBtn">›</button>
-      <button class="btn small amber" id="calTodayBtn">Today</button>
-    </div>
-    <div id="calGrid" class="cal-grid"></div>
-    <div id="calDayDetail" class="cal-day-detail" style="display:none;"></div>
-  </div>
 
-  <div class="card">
-    <h2>Import from school calendar (.ics)</h2>
-    <p style="font-size:.85rem;color:#999;">Most school platforms (Google Classroom, Canvas, Schoology) can export or share a calendar feed as a <code>.ics</code> file. Upload it here to pull assignments straight into your Planner.</p>
-    <input type="file" id="icsFileInput" accept=".ics">
-    <div id="icsReviewList" style="margin-top:14px;"></div>
-    <button class="btn amber" id="icsImportBtn" style="margin-top:10px;display:none;">Import selected into Planner</button>
-  </div>
-</section>
 
 <!-- DAILY FEEDBACK TAB -->
 <section id="feedback" class="panel">
@@ -773,8 +714,8 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="config.js?v=16"></script>
-<script src="app.js?v=16"></script>
+<script src="config.js?v=17"></script>
+<script src="app.js?v=17"></script>
 <script>
   if(location.hash === '#signup'){ try{ switchAuthTab('signup'); }catch(e){} }
 </script>

@@ -58,6 +58,25 @@ is the default. The design is dark-first by spec.
 
 ---
 
+## Removed features
+
+**Grades** — removed. It was a mirror: it only reflected back what the
+school's own report card already shows automatically, and asked students to
+hand-type every score to get there. If it ever comes back, the version worth
+building answers *"what do I need on the final?"* — a decision, not a mirror.
+
+**Calendar** — removed; Google Calendar does this better. Possible return
+depending on what the Daily Feedback answers say once school starts.
+
+The `.ics` import **survived** and now lives in the **Planner** tab, since it
+creates planner tasks and was never really a calendar feature. Given the
+school runs on Schoology with a heavy date load, this is the piece most likely
+to earn its keep.
+
+Both features' **data structures are intentionally left intact** in
+`newUserData()`, and subject names still propagate to `gradeTracker`. Nothing
+is lost if either comes back — only the UI was removed.
+
 ## Feature notes
 
 **Mind map** — 5 renameable subject boards, each a large scrollable canvas.
@@ -87,7 +106,7 @@ answers any time it's open. Tab visibility updates on login / window change
 or Refresh, not a live stream.
 
 **Subjects** — named once in Account settings and applied everywhere: basic
-notes, formal notes, flashcards, mind maps, question log, and grades. The
+notes, formal notes, flashcards, mind maps, and the question log. The
 per-tab rename fields still work and write back to the same master list, so
 renaming anywhere renames everywhere. Blank falls back to "Subject N".
 Subject names are filtered like display names, since they appear on shared

@@ -1891,7 +1891,7 @@ const navSearchItems = [
   { label:'Flashcards', preview:'5 stacks, 150 cards each', run:()=>navTo('study',{scrollTo:'flashStackTabs'}) },
   { label:'Planner', preview:'Your assignments and deadlines', run:()=>navTo('planner') },
   { label:'Add assignment', preview:'Add a new task to your planner', run:()=>navTo('planner',{scrollTo:'taskTitle'}) },
-  { label:'Import calendar', preview:'Import assignments from a school .ics file', run:()=>navTo('calendar',{scrollTo:'icsFileInput'}) },
+  { label:'Import calendar', preview:'Import assignments from a school .ics file', run:()=>navTo('planner',{scrollTo:'icsFileInput'}) },
   { label:'Timer', preview:'Pomodoro focus timer', run:()=>navTo('timer') },
   { label:'Ambient sound', preview:'White noise, pink noise, brown noise, rain, ocean waves', run:()=>navTo('timer',{scrollTo:'ambientSelect'}) },
   { label:'Class bell schedule', preview:'Set your periods and bell times', run:()=>navTo('timer',{scrollTo:'bellNowStatus'}) },
@@ -1903,11 +1903,8 @@ const navSearchItems = [
   { label:'Question bank', preview:'All your saved questions', run:()=>navTo('qlog',{qsubtab:'qbank',scrollTo:'qList'}) },
   { label:'Practice test', preview:'Build and take practice tests', run:()=>navTo('qlog',{qsubtab:'qtests',scrollTo:'ptList'}) },
   { label:'Mistake log', preview:'Questions you got wrong', run:()=>navTo('qlog',{qsubtab:'qmistakes',scrollTo:'mistakeList'}) },
-  { label:'Grades', preview:'Major/quiz grades, semesters, final grade', run:()=>navTo('grades') },
-  { label:'Grade tracker', preview:'Track grades for up to 5 subjects', run:()=>navTo('grades',{scrollTo:'gtSubjectTabs'}) },
   { label:'Friends', preview:'Add and manage friends', run:()=>navTo('social') },
   { label:'Leaderboard', preview:'See where you rank', run:()=>navTo('social',{scrollTo:'leaderboard'}) },
-  { label:'Calendar', preview:'Monthly view of tasks and reviews', run:()=>navTo('calendar') },
   { label:'Weekly recap', preview:'Your last 7 days at a glance', run:()=>openModalNav('weeklyRecapModal', renderWeeklyRecap) },
   { label:'Achievements', preview:'Unlockable milestones and badges', run:()=>openModalNav('achievementLogModal', renderAchievementLog) },
   { label:'Achievement log', preview:'Unlockable milestones and badges', run:()=>openModalNav('achievementLogModal', renderAchievementLog) },
@@ -2418,177 +2415,6 @@ function resolveMistake(id, resolved){
   renderMistakeList(); renderHome(); scheduleSave();
 }
 
-
-/* ===================== GRADE TRACKER ===================== */
-let gtActiveSubject = 0, gtActiveTerm = 1;
-function catAvg(entries){
-  if(!entries || entries.length===0) return null;
-  const sumScore = entries.reduce((s,e)=>s+e.score,0);
-  const sumTotal = entries.reduce((s,e)=>s+e.total,0);
-  if(sumTotal===0) return null;
-  return (sumScore/sumTotal)*100;
-}
-function termAvg(subject, term){
-  const t = subject.terms[term];
-  const majorAvg = catAvg(t.major);
-  const quizAvg = catAvg(t.quiz);
-  if(majorAvg===null && quizAvg===null) return null;
-  const wMajor = subject.weights.major, wQuiz = subject.weights.quiz;
-  if(majorAvg===null) return quizAvg;
-  if(quizAvg===null) return majorAvg;
-  return (majorAvg*wMajor + quizAvg*wQuiz) / (wMajor+wQuiz);
-}
-function semesterAvg(subject, termA, termB){
-  const a = termAvg(subject, termA), b = termAvg(subject, termB);
-  if(a===null && b===null) return null;
-  if(a===null) return b;
-  if(b===null) return a;
-  return (a+b)/2;
-}
-function finalGrade(subject){
-  const s1 = semesterAvg(subject,1,2), s2 = semesterAvg(subject,3,4);
-  if(s1===null && s2===null) return null;
-  if(s1===null) return s2;
-  if(s2===null) return s1;
-  return (s1+s2)/2;
-}
-function fmtPct(v){ return v===null ? '—' : v.toFixed(1)+'%'; }
-function renderGradeTracker(){
-  if(!data || !data.gradeTracker) return;
-  const gt = data.gradeTracker;
-  renderSubjectTabs('gtSubjectTabs', gt.subjects, gtActiveSubject, (i)=>{ gtActiveSubject=i; renderGradeTracker(); });
-  const subj = gt.subjects[gtActiveSubject];
-  document.getElementById('gtSubjectName').value = subj.name;
-  document.getElementById('gtMajorWeight').value = subj.weights.major;
-  document.getElementById('gtQuizWeight').value = subj.weights.quiz;
-  document.getElementById('gtTermTabs').innerHTML = [1,2,3,4].map(t=>
-    `<button class="pill-toggle ${t===gtActiveTerm?'active':''}" onclick="gtSelectTerm(${t})">Term ${t}</button>`).join('');
-  const term = subj.terms[gtActiveTerm];
-  const renderList = (entries, listId, kind) => {
-    document.getElementById(listId).innerHTML = entries.length ? entries.map((e,i)=>
-      `<div class="home-item" style="display:flex;justify-content:space-between;align-items:center;">
-        <span>${e.label.replace(/</g,'&lt;')}: ${e.score}/${e.total} (${((e.score/e.total)*100).toFixed(1)}%)</span>
-        <button class="btn small red" onclick="gtRemoveEntry('${kind}',${i})">×</button>
-      </div>`).join('') : '<p style="color:#999;font-size:.8rem;">No grades yet.</p>';
-  };
-  renderList(term.major, 'gtMajorList', 'major');
-  renderList(term.quiz, 'gtQuizList', 'quiz');
-  document.getElementById('gtMajorAvg').textContent = catAvg(term.major)!==null ? `— avg ${fmtPct(catAvg(term.major))}` : '';
-  document.getElementById('gtQuizAvg').textContent = catAvg(term.quiz)!==null ? `— avg ${fmtPct(catAvg(term.quiz))}` : '';
-  const avg = termAvg(subj, gtActiveTerm);
-  document.getElementById('gtTermAvg').textContent = avg!==null ? `Term ${gtActiveTerm} average: ${fmtPct(avg)}` : `No grades entered yet for Term ${gtActiveTerm}.`;
-
-  // overview table across all 5 subjects
-  const rows = gt.subjects.map(s=>{
-    const t1=termAvg(s,1), t2=termAvg(s,2), t3=termAvg(s,3), t4=termAvg(s,4);
-    const sem1=semesterAvg(s,1,2), sem2=semesterAvg(s,3,4), fin=finalGrade(s);
-    return `<tr><td><strong>${s.name.replace(/</g,'&lt;')}</strong></td><td>${fmtPct(t1)}</td><td>${fmtPct(t2)}</td><td>${fmtPct(t3)}</td><td>${fmtPct(t4)}</td><td>${fmtPct(sem1)}</td><td>${fmtPct(sem2)}</td><td><strong>${fmtPct(fin)}</strong></td></tr>`;
-  }).join('');
-  document.getElementById('gtOverviewTable').innerHTML = `<tr><th>Subject</th><th>T1</th><th>T2</th><th>T3</th><th>T4</th><th>Sem 1</th><th>Sem 2</th><th>Final</th></tr>${rows}`;
-}
-function gtSelectTerm(t){ gtActiveTerm=t; renderGradeTracker(); }
-function gtRemoveEntry(kind, i){
-  const subj = data.gradeTracker.subjects[gtActiveSubject];
-  subj.terms[gtActiveTerm][kind].splice(i,1);
-  renderGradeTracker(); scheduleSave();
-}
-document.getElementById('gtSubjectName').addEventListener('input', (e)=>{
-  syncSubjectRename(gtActiveSubject, e.target.value);
-  renderSubjectTabs('gtSubjectTabs', data.gradeTracker.subjects, gtActiveSubject, (i)=>{ gtActiveSubject=i; renderGradeTracker(); });
-  scheduleSave();
-});
-document.getElementById('gtMajorWeight').addEventListener('input', (e)=>{
-  let major = Math.max(0, Math.min(100, parseInt(e.target.value)||0));
-  const subj = data.gradeTracker.subjects[gtActiveSubject];
-  subj.weights.major = major; subj.weights.quiz = 100-major;
-  document.getElementById('gtQuizWeight').value = subj.weights.quiz;
-  renderGradeTracker(); scheduleSave();
-});
-document.getElementById('gtMajorAddBtn').addEventListener('click', ()=>{
-  const label = document.getElementById('gtMajorLabel').value.trim();
-  const score = parseFloat(document.getElementById('gtMajorScore').value);
-  const total = parseFloat(document.getElementById('gtMajorTotal').value);
-  if(!label || isNaN(score) || isNaN(total) || total<=0){ showToast('Fill in a label, score, and total (out of).'); return; }
-  data.gradeTracker.subjects[gtActiveSubject].terms[gtActiveTerm].major.push({label, score, total});
-  document.getElementById('gtMajorLabel').value=''; document.getElementById('gtMajorScore').value=''; document.getElementById('gtMajorTotal').value='100';
-  renderGradeTracker(); scheduleSave();
-});
-document.getElementById('gtQuizAddBtn').addEventListener('click', ()=>{
-  const label = document.getElementById('gtQuizLabel').value.trim();
-  const score = parseFloat(document.getElementById('gtQuizScore').value);
-  const total = parseFloat(document.getElementById('gtQuizTotal').value);
-  if(!label || isNaN(score) || isNaN(total) || total<=0){ showToast('Fill in a label, score, and total (out of).'); return; }
-  data.gradeTracker.subjects[gtActiveSubject].terms[gtActiveTerm].quiz.push({label, score, total});
-  document.getElementById('gtQuizLabel').value=''; document.getElementById('gtQuizScore').value=''; document.getElementById('gtQuizTotal').value='100';
-  renderGradeTracker(); scheduleSave();
-});
-
-/* ===================== CALENDAR ===================== */
-let calYear = new Date().getFullYear(), calMonth = new Date().getMonth(), calSelectedDay = null;
-const CAL_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-const CAL_DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-
-function renderCalendar(){
-  const label = document.getElementById('calMonthLabel');
-  label.textContent = `${CAL_MONTHS[calMonth]} ${calYear}`;
-  const grid = document.getElementById('calGrid');
-  grid.innerHTML = CAL_DAYS.map(d=>`<div class="cal-day-label">${d}</div>`).join('');
-  const first = new Date(calYear, calMonth, 1).getDay();
-  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
-  const daysInPrev = new Date(calYear, calMonth, 0).getDate();
-  const todayObj = new Date(); const todayD=todayObj.getDate(), todayM=todayObj.getMonth(), todayY=todayObj.getFullYear();
-
-  // collect events
-  const events = {};
-  const addEvent=(dateStr, text, cls)=>{ if(!events[dateStr]) events[dateStr]=[]; events[dateStr].push({text,cls}); };
-  data.tasks.forEach(t=>{ addEvent(t.effectiveDue, t.title.slice(0,20), 'cal-ev-task'); });
-  data.questionLog.mistakes.forEach(m=>{
-    const d=new Date(m.ts); const ds=localYMD(d);
-    addEvent(ds, m.prompt.slice(0,20), 'cal-ev-mistake');
-  });
-
-  // prev month padding
-  for(let i=0;i<first;i++){
-    const d=daysInPrev-first+i+1;
-    grid.innerHTML += `<div class="cal-day other-month"><div class="cal-day-num">${d}</div></div>`;
-  }
-  for(let d=1;d<=daysInMonth;d++){
-    const ds=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const isToday=d===todayD&&calMonth===todayM&&calYear===todayY;
-    const isSelected=calSelectedDay===ds;
-    const evs=events[ds]||[];
-    const evHtml=evs.slice(0,3).map(e=>`<div class="cal-event ${e.cls}">${e.text.replace(/</g,'&lt;')}</div>`).join('');
-    grid.innerHTML+=`<div class="cal-day${isToday?' today':''}${isSelected?' selected':''}" data-date="${ds}">
-      <div class="cal-day-num">${d}</div>${evHtml}
-    </div>`;
-  }
-  // next month padding
-  const total=first+daysInMonth; const rem=(7-total%7)%7;
-  for(let i=1;i<=rem;i++) grid.innerHTML+=`<div class="cal-day other-month"><div class="cal-day-num">${i}</div></div>`;
-
-  grid.querySelectorAll('.cal-day:not(.other-month)').forEach(el=>{
-    el.addEventListener('click', ()=>{
-      calSelectedDay=el.dataset.date;
-      renderCalendar();
-      showCalDayDetail(el.dataset.date);
-    });
-  });
-  if(!calSelectedDay) document.getElementById('calDayDetail').style.display='none';
-}
-function showCalDayDetail(dateStr){
-  const detail=document.getElementById('calDayDetail');
-  detail.style.display='block';
-  const tasks=data.tasks.filter(t=>t.effectiveDue===dateStr);
-  const mistakes=data.questionLog.mistakes.filter(m=>localYMD(new Date(m.ts))===dateStr);
-  let html=`<h3>${dateStr}</h3>`;
-  if(tasks.length) html+=`<strong>Tasks due:</strong>`+tasks.map(t=>`<div class="home-item">▪ ${t.title.replace(/</g,'&lt;')}</div>`).join('');
-  if(mistakes.length) html+=`<strong>Mistakes logged:</strong>`+mistakes.map(m=>`<div class="home-item" style="color:var(--red);">✕ ${m.prompt.slice(0,60).replace(/</g,'&lt;')}</div>`).join('');
-  if(!tasks.length&&!mistakes.length) html+='<p style="color:#8f8f8f;font-size:.82rem;">Nothing logged for this day.</p>';
-  detail.innerHTML=html;
-}
-document.getElementById('calPrevBtn').addEventListener('click', ()=>{ calMonth--; if(calMonth<0){calMonth=11;calYear--;} calSelectedDay=null; renderCalendar(); });
-document.getElementById('calNextBtn').addEventListener('click', ()=>{ calMonth++; if(calMonth>11){calMonth=0;calYear++;} calSelectedDay=null; renderCalendar(); });
-document.getElementById('calTodayBtn').addEventListener('click', ()=>{ calYear=new Date().getFullYear(); calMonth=new Date().getMonth(); calSelectedDay=null; renderCalendar(); });
 
 /* ===================== ICS CALENDAR IMPORT ===================== */
 function parseICS(text){
@@ -3174,12 +3000,10 @@ async function renderAll(){
   ensureFriendCode();
   renderFriends();
   renderLeaderboard();
-  renderCalendar();
   mlSubjectSelect();
   renderMlTypeFields();
   buildSchedule();
   renderSchedule();
-  renderGradeTracker();
   loadFeedback();
   applyDarkMode(data.lightMode||false);
   // restore display name if saved
