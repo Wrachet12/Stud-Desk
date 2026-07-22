@@ -6,7 +6,7 @@
 <title>StudyCore — Plan, Time, Note, Learn</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=18">
+<link rel="stylesheet" href="styles.css?v=19">
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5483196886768719" crossorigin="anonymous"></script>
 </head>
 <body>
@@ -207,6 +207,7 @@
       <button class="btn amber" id="flashAddBtn">+ Add card</button>
       <button class="btn ghost small" id="flashShareBtn">► Share stack</button>
       <button class="btn ghost small" id="flashImportBtn">◄ Import stack</button>
+      <button class="btn ghost small" id="flashSortBtn">Newest first</button>
     </div>
     <div id="flashImportedBanner" style="display:none;align-items:center;gap:10px;margin-top:8px;"></div>
     <div id="flashViewer" style="margin-top:16px;"></div>
@@ -322,6 +323,8 @@
     <h2>Class bell schedule</h2>
     <p style="font-size:.85rem;color:#999;">Build your whole day as one timeline: add a class period (name it, give it a start and end time), then add the passing bell right after it (just start and end — no name needed), and so on. Up to 10 periods and 9 bells total.</p>
     <div id="bellNowStatus" style="font-weight:600;margin-bottom:10px;"></div>
+    <div id="scheduleTimeline" class="schedule-timeline"></div>
+    <div id="scheduleUpNext" style="font-size:.8rem;color:#999;margin-top:6px;"></div>
     <details>
       <summary>Edit your schedule</summary>
       <div id="scheduleBlockList" style="margin-top:10px;"></div>
@@ -374,8 +377,12 @@
       <div><label>Size</label>
         <select id="basicSize"><option>14</option><option selected>16</option><option>18</option><option>22</option><option>26</option></select>
       </div>
+      <div><label>Image</label>
+        <button class="btn ghost small" id="basicInsertImgBtn" type="button">Insert image / sketch</button>
+        <input type="file" id="basicImgFileInput" accept="image/*" style="display:none;">
+      </div>
     </div>
-    <textarea id="basicNote" placeholder="Write freely here..."></textarea>
+    <div id="basicNote" class="note-page" contenteditable="true" data-placeholder="Write freely here..."></div>
   </div>
 
   <div id="formal" class="subpanel card" style="display:none;">
@@ -559,6 +566,12 @@
   </div>
 
   <div class="card">
+    <h2>Shared with you</h2>
+    <p style="font-size:.85rem;color:#999;">Flashcard stacks and practice tests friends have sent you directly.</p>
+    <div id="sharedWithYouList"></div>
+  </div>
+
+  <div class="card">
     <h2>Leaderboard</h2>
     <div class="pillgroup">
       <button class="pill-toggle active" id="lbFriendsBtn" data-lb="friends">Friends</button>
@@ -637,12 +650,19 @@
 <div id="shareModal" class="modal-overlay" style="display:none;">
   <div class="modal-card">
     <h2 id="shareModalTitle">Share</h2>
-    <p style="font-size:.85rem;color:#999;">Anyone with this code can import a copy.</p>
+    <p style="font-size:.85rem;color:#999;">Anyone with this code can import a copy — or send it straight to a friend below.</p>
     <div style="background:#141414;border:1px solid #262626;padding:12px;border-radius:10px;font-family:Inter,sans-serif;font-variant-numeric:tabular-nums;font-size:1.05rem;letter-spacing:.06em;word-break:break-all;" id="shareCode"></div>
     <div style="margin-top:14px;">
       <button class="btn amber" id="copyShareCodeBtn">Copy code</button>
       <button class="btn ghost" id="closeShareModal" style="margin-left:8px;">Close</button>
     </div>
+    <hr style="margin:16px 0;border:none;border-top:1px solid var(--paper-line);">
+    <label>Or send directly to a friend</label>
+    <div class="row" style="align-items:flex-end;">
+      <div style="flex:2"><select id="shareToFriendSelect"><option value="">Loading friends…</option></select></div>
+      <div style="flex:1"><button class="btn blue" id="shareToFriendBtn" style="width:100%">Send</button></div>
+    </div>
+    <p id="shareToFriendStatus" style="font-size:.78rem;color:#999;margin-top:6px;"></p>
   </div>
 </div>
 
@@ -714,8 +734,8 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="config.js?v=18"></script>
-<script src="app.js?v=18"></script>
+<script src="config.js?v=19"></script>
+<script src="app.js?v=19"></script>
 <script>
   if(location.hash === '#signup'){ try{ switchAuthTab('signup'); }catch(e){} }
 </script>

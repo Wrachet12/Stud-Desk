@@ -146,6 +146,20 @@ async function loadProfileAndEnter(userId, email){
     data.mindmaps[0].bubbleSeq = profile.app_data.bubbleSeq || 0;
   }
   data.mindmapMigratedV1 = true;
+  // One-time migration: basic notes used to be plain text in a <textarea>;
+  // they're now HTML in a contenteditable page (so images can be embedded).
+  // Escape old content and turn line breaks into <br> so it displays
+  // correctly instead of being misread as markup.
+  if(!data.notesImagesMigratedV1){
+    const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    (data.basicNotebooks||[]).forEach(nb=>{
+      Object.keys(nb.pages||{}).forEach(pg=>{
+        const v = nb.pages[pg];
+        if(typeof v === 'string') nb.pages[pg] = esc(v).replace(/\n/g,'<br>');
+      });
+    });
+    data.notesImagesMigratedV1 = true;
+  }
   // BUGFIX (more robust): a flag alone only helps once it's actually saved —
   // if this is the first login since the fix shipped, the flag hasn't hit
   // the database yet, so it could still look like it reverted "one more
@@ -255,6 +269,11 @@ const ENCOURAGE = [
   "Your brain just got a little stronger.",
   "Locked in. That's how it's done."
 ];
+function stripHtml(html){
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html || '';
+  return tmp.textContent || '';
+}
 function showToast(msg){
   const el = document.createElement('div');
   el.className='toast';
@@ -695,16 +714,45 @@ function renderScheduleBlockList(){
   const wrap = document.getElementById('scheduleBlockList');
   const blocks = data.schedule.blocks;
   wrap.innerHTML = blocks.length ? blocks.map((b,i)=>`
-    <div class="row" style="align-items:center;margin-bottom:6px;">
-      <div style="flex:0 0 90px;font-weight:600;">${b.type==='period'?'■':'●'} ${b.type==='period'?'Period':'Bell'}</div>
-      <div style="flex:2">${b.type==='period' ? (b.name||'Untitled').replace(/</g,'&lt;') : '<span style="color:#999;">Passing period</span>'}</div>
-      <div style="flex:1">${b.start}–${b.end}</div>
-      <div style="flex:0 0 auto;"><button class="btn small red" onclick="removeScheduleBlock(${i})">Remove</button></div>
+    <div class="sched-row">
+      <span class="sched-icon">${b.type==='period'?'■':'●'}</span>
+      <span class="sched-name">${b.type==='period' ? (b.name||'Untitled').replace(/</g,'&lt;') : '<span style="color:#999;font-weight:400;">Passing period</span>'}</span>
+      <span class="sched-time">${b.start}–${b.end}</span>
+      <button class="btn small red" onclick="removeScheduleBlock(${i})">Remove</button>
     </div>`).join('') : '<p style="color:#999;font-size:.82rem;">No schedule built yet — add your first period below.</p>';
   document.getElementById('addPeriodBtn').disabled = periodCount()>=10;
   document.getElementById('addBellBtn').disabled = bellCount()>=9;
 }
-function removeScheduleBlock(i){ data.schedule.blocks.splice(i,1); renderScheduleBlockList(); scheduleSave(); updateBellStatus(); }
+function renderScheduleTimeline(){
+  const wrap = document.getElementById('scheduleTimeline');
+  const upNext = document.getElementById('scheduleUpNext');
+  if(!wrap) return;
+  const blocks = (data.schedule.blocks||[]).slice().sort((a,b)=>timeStrToMinutes(a.start)-timeStrToMinutes(b.start));
+  if(blocks.length===0){ wrap.innerHTML = ''; if(upNext) upNext.textContent = ''; return; }
+  const dayStart = timeStrToMinutes(blocks[0].start);
+  const dayEnd = timeStrToMinutes(blocks[blocks.length-1].end);
+  const span = Math.max(1, dayEnd - dayStart);
+  const nowMin = new Date().getHours()*60 + new Date().getMinutes();
+  const currentIdx = blocks.findIndex(b => nowMin >= timeStrToMinutes(b.start) && nowMin < timeStrToMinutes(b.end));
+  wrap.innerHTML = blocks.map((b,i)=>{
+    const left = (timeStrToMinutes(b.start)-dayStart)/span*100;
+    const width = (timeStrToMinutes(b.end)-timeStrToMinutes(b.start))/span*100;
+    const label = b.type==='period' ? (b.name||'') : '';
+    return `<div class="tl-block ${b.type} ${i===currentIdx?'current':''}" style="left:${left}%;width:${width}%;" title="${(b.type==='period'?b.name:'Passing period')} ${b.start}–${b.end}">
+      <span class="tl-label">${label.replace(/</g,'&lt;')}</span>
+    </div>`;
+  }).join('');
+  if(nowMin >= dayStart && nowMin <= dayEnd){
+    const nowLeft = (nowMin-dayStart)/span*100;
+    wrap.innerHTML += `<div class="tl-now-marker" style="left:${nowLeft}%;"></div><div class="tl-now-dot" style="left:${nowLeft}%;"></div>`;
+  }
+  // "up next" line — the next period (not bell) coming up today
+  if(upNext){
+    const nextPeriod = blocks.find(b => b.type==='period' && timeStrToMinutes(b.start) > nowMin);
+    upNext.textContent = nextPeriod ? `Up next: ${nextPeriod.name} at ${nextPeriod.start}` : '';
+  }
+}
+function removeScheduleBlock(i){ data.schedule.blocks.splice(i,1); renderScheduleBlockList(); renderScheduleTimeline(); scheduleSave(); updateBellStatus(); }
 function addScheduleBlock(type){
   const name = document.getElementById('blockNameInput').value.trim();
   const start = document.getElementById('blockStartInput').value;
@@ -719,7 +767,7 @@ function addScheduleBlock(type){
   document.getElementById('blockStartInput').value = end; // next block naturally starts where this one ended
   document.getElementById('blockEndInput').value='';
   document.getElementById('blockEndInput').focus();
-  renderScheduleBlockList(); scheduleSave(); updateBellStatus();
+  renderScheduleBlockList(); renderScheduleTimeline(); scheduleSave(); updateBellStatus();
 }
 document.getElementById('addPeriodBtn').addEventListener('click', ()=>addScheduleBlock('period'));
 document.getElementById('addBellBtn').addEventListener('click', ()=>addScheduleBlock('bell'));
@@ -727,6 +775,7 @@ function updateBellStatus(){
   const el = document.getElementById('bellNowStatus');
   if(!el || !data) return;
   const blocks = data.schedule.blocks||[];
+  renderScheduleTimeline();
   if(blocks.length===0){
     el.textContent = "Build your schedule below to see what's happening right now.";
     return;
@@ -811,7 +860,7 @@ function loadBasicPage(){
   const nb = data.basicNotebooks[basicActiveSubject];
   document.getElementById('basicSubjectName').value = nb.name;
   document.getElementById('basicPageNum').value = basicActivePage;
-  document.getElementById('basicNote').value = nb.pages[basicActivePage] || '';
+  document.getElementById('basicNote').innerHTML = nb.pages[basicActivePage] || '';
 }
 function renderBasicNotebooks(){
   renderSubjectTabs('basicSubjectTabs', data.basicNotebooks, basicActiveSubject, (i)=>{
@@ -825,10 +874,93 @@ document.getElementById('basicSubjectName').addEventListener('input', (e)=>{
   scheduleSave();
 });
 document.getElementById('basicNote').addEventListener('input', (e)=>{
-  data.basicNotebooks[basicActiveSubject].pages[basicActivePage] = e.target.value;
+  data.basicNotebooks[basicActiveSubject].pages[basicActivePage] = e.target.innerHTML;
   scheduleSave();
 });
-document.getElementById('basicNote').addEventListener('blur', (e)=>{ if(e.target.value.trim()){ awardXP(3,false); logActivity('notesEdited',1); } });
+document.getElementById('basicNote').addEventListener('blur', (e)=>{ if(e.target.textContent.trim()){ awardXP(3,false); logActivity('notesEdited',1); } });
+
+/* ---- Images/sketches inside notes ----
+   Inserted as a non-editable block (contenteditable="false") so typing
+   near it can't mangle it character by character. The block itself uses
+   the browser's native CSS `resize` handle — no custom drag-resize code
+   needed — and floats left/right so the surrounding text genuinely
+   reflows around it via real CSS, rather than an approximation. The page
+   canvas itself never changes size; only what's inside it does.
+   Downscaled client-side before embedding so a phone photo doesn't bloat
+   the account's storage. */
+function downscaleImageFile(file, maxDim){
+  return new Promise((resolve, reject)=>{
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      img.onload = ()=>{
+        let { width, height } = img;
+        if(width > maxDim || height > maxDim){
+          const scale = maxDim / Math.max(width, height);
+          width = Math.round(width*scale); height = Math.round(height*scale);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.82));
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+let noteImgSeq = 0;
+function insertNoteImage(dataUrl){
+  const editor = document.getElementById('basicNote');
+  editor.focus();
+  const id = 'nimg' + (++noteImgSeq) + '_' + Date.now();
+  const html = `<div class="note-img-wrap align-left" contenteditable="false" data-nimg="${id}">
+    <img src="${dataUrl}">
+    <div class="note-img-toolbar">
+      <button type="button" onclick="alignNoteImage('${id}','left')">⇤</button>
+      <button type="button" onclick="alignNoteImage('${id}','right')">⇥</button>
+      <button type="button" onclick="removeNoteImage('${id}')">✕</button>
+    </div>
+  </div>&nbsp;`;
+  document.execCommand('insertHTML', false, html);
+  data.basicNotebooks[basicActiveSubject].pages[basicActivePage] = editor.innerHTML;
+  scheduleSave();
+}
+function alignNoteImage(id, side){
+  const el = document.querySelector(`.note-img-wrap[data-nimg="${id}"]`);
+  if(!el) return;
+  el.classList.toggle('align-left', side==='left');
+  el.classList.toggle('align-right', side==='right');
+  data.basicNotebooks[basicActiveSubject].pages[basicActivePage] = document.getElementById('basicNote').innerHTML;
+  scheduleSave();
+}
+function removeNoteImage(id){
+  const el = document.querySelector(`.note-img-wrap[data-nimg="${id}"]`);
+  if(el) el.remove();
+  data.basicNotebooks[basicActiveSubject].pages[basicActivePage] = document.getElementById('basicNote').innerHTML;
+  scheduleSave();
+}
+// the native CSS `resize` handle fires no DOM event, so poll-save on
+// mouseup anywhere in the editor to persist a resize the user just made
+document.getElementById('basicNote').addEventListener('mouseup', ()=>{
+  data.basicNotebooks[basicActiveSubject].pages[basicActivePage] = document.getElementById('basicNote').innerHTML;
+  scheduleSave();
+});
+document.getElementById('basicInsertImgBtn').addEventListener('click', ()=>{
+  document.getElementById('basicImgFileInput').click();
+});
+document.getElementById('basicImgFileInput').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  if(!file.type.startsWith('image/')){ showToast('Please choose an image file.'); e.target.value=''; return; }
+  try{
+    const dataUrl = await downscaleImageFile(file, 1000);
+    insertNoteImage(dataUrl);
+  }catch(err){ showToast('Could not read that image.'); }
+  e.target.value = '';
+});
 function goBasicPage(n){
   n = Math.max(1, Math.min(MAX_PAGES, n));
   basicActivePage = n;
@@ -983,8 +1115,21 @@ function reportTest(id){
   const questions = t.questionIds.map(qid=>{ for(const n of [1,2,3,4]){ const f=subj.terms[n].find(q=>q.id===qid); if(f) return f; } return null; }).filter(Boolean);
   openReportModal('shared_deck', t.importedFrom.code, t.importedFrom.owner, { name:t.name, questions });
 }
+// Order toggle: newest-first / oldest-first, remembered per stack. Card ids
+// increment on creation, so sorting by id is sorting by creation order.
+function flashSortLabel(stack){ return (stack.sortDir==='asc') ? 'Oldest first' : 'Newest first'; }
+document.getElementById('flashSortBtn')?.addEventListener('click', ()=>{
+  const stack = data.flashcardStacks[flashActiveStack];
+  stack.sortDir = stack.sortDir==='asc' ? 'desc' : 'asc';
+  stack.cards.sort((a,b)=> stack.sortDir==='asc' ? a.id-b.id : b.id-a.id);
+  flashActiveCard = 0; flashFlipped = false;
+  scheduleSave();
+  renderFlashAll();
+});
 function renderFlashViewer(){
   const stack = data.flashcardStacks[flashActiveStack];
+  const sortBtn = document.getElementById('flashSortBtn');
+  if(sortBtn) sortBtn.textContent = flashSortLabel(stack);
   const wrap = document.getElementById('flashViewer');
   if(stack.cards.length === 0){
     wrap.innerHTML = '<div class="flash-empty">No cards yet — add one above.</div>';
@@ -1030,10 +1175,14 @@ document.getElementById('flashStackName').addEventListener('input', (e)=>{
 // "generating…" state, then do the (fast) DB insert in the background —
 // and the resulting code is short and works across devices.
 const shareKindLabels = { flashcards: 'Share flashcard stack', practice_test: 'Share practice test' };
+let pendingShare = null; // { kind, title, payload } — reused by "send to friend"
 async function shareViaTable(kind, title, payload){
+  pendingShare = { kind, title, payload };
   document.getElementById('shareModalTitle').textContent = shareKindLabels[kind] || 'Share';
   document.getElementById('shareCode').textContent = 'Generating code…';
+  document.getElementById('shareToFriendStatus').textContent = '';
   document.getElementById('shareModal').style.display='flex';
+  populateShareFriendSelect();
   try{
     const code = Math.random().toString(36).slice(2,8).toUpperCase();
     const { error } = await sb.from('shared_decks').insert({
@@ -1047,6 +1196,35 @@ async function shareViaTable(kind, title, payload){
     document.getElementById('shareCode').textContent = 'Error generating code — close and try again.';
   }
 }
+function populateShareFriendSelect(){
+  const sel = document.getElementById('shareToFriendSelect');
+  if(!sel) return;
+  const friends = friendsCache.accepted || [];
+  sel.innerHTML = friends.length
+    ? friends.map(f=>`<option value="${f.id}">${f.name.replace(/</g,'&lt;')}</option>`).join('')
+    : '<option value="">Add a friend first</option>';
+}
+document.getElementById('shareToFriendBtn')?.addEventListener('click', async ()=>{
+  const friendId = document.getElementById('shareToFriendSelect').value;
+  const statusEl = document.getElementById('shareToFriendStatus');
+  if(!pendingShare){ statusEl.textContent = 'Nothing to send.'; return; }
+  if(!friendId){ statusEl.textContent = 'Pick a friend first.'; return; }
+  statusEl.textContent = 'Sending…';
+  try{
+    const code = Math.random().toString(36).slice(2,8).toUpperCase();
+    const { error } = await sb.from('shared_decks').insert({
+      owner_id: currentUserId,
+      owner_name: data.displayName || document.getElementById('userName').textContent,
+      title: pendingShare.title, kind: pendingShare.kind, payload: pendingShare.payload,
+      share_code: code, recipient_id: friendId
+    });
+    if(error) throw error;
+    statusEl.textContent = 'Sent!';
+    showToast('Sent to your friend.');
+  }catch(e){
+    statusEl.textContent = "Couldn't send — has migration_6.sql been run?";
+  }
+});
 document.getElementById('flashShareBtn').addEventListener('click', ()=>{
   const stack = data.flashcardStacks[flashActiveStack];
   if(!stack.cards.length){ showToast('This stack has no cards to share yet.'); return; }
@@ -1072,61 +1250,56 @@ document.getElementById('ptImportBtn').addEventListener('click', ()=>{
 });
 document.getElementById('closeImportModal').addEventListener('click', ()=>{ document.getElementById('importModal').style.display='none'; });
 
+// Shared by both import paths: typing a code, and importing straight from
+// the "Shared with you" inbox. Returns true on success.
+async function importDeckRow(deck, code){
+  // Scan on the way IN as well as on the way out — decks shared before
+  // these filters existed, or by a modified client, still get caught here.
+  const incomingProblem = validateShareable(deck.payload || {});
+  if(incomingProblem){
+    lastBlockedDeck = { code, owner: deck.owner_name, payload: deck.payload };
+    showToast(incomingProblem + ' This deck was not imported.');
+    document.getElementById('reportBlockedBtn').style.display = 'inline-block';
+    return false;
+  }
+  if(deck.kind === 'flashcards'){
+    const payload = deck.payload;
+    if(!payload.cards || !Array.isArray(payload.cards) || payload.cards.length===0){ showToast('This shared stack has no cards.'); return false; }
+    const emptyStack = data.flashcardStacks.findIndex(s=>s.cards.length===0);
+    const target = emptyStack>-1 ? emptyStack : 0;
+    data.flashcardStacks[target].name = payload.name || 'Imported';
+    data.flashcardStacks[target].cards = payload.cards.map(c=>({...c, id: (data.flashcardSeq = (data.flashcardSeq||0)+1)}));
+    data.flashcardStacks[target].importedFrom = { code, owner: deck.owner_name || 'Unknown' };
+    flashActiveStack = target; flashActiveCard=0; flashFlipped=false;
+    renderFlashAll();
+    showToast(`Imported "${payload.name}" into Stack ${target+1}.`);
+  } else if(deck.kind === 'practice_test'){
+    const payload = deck.payload;
+    if(!payload.questions || !Array.isArray(payload.questions) || payload.questions.length===0){ showToast('This shared test has no questions.'); return false; }
+    const subj = data.questionLog.subjects[qActiveSubject];
+    const newIds = payload.questions.map(q=>{
+      const newQ = {...q, id: (data.questionLog.questionSeq = (data.questionLog.questionSeq||0)+1)};
+      subj.terms[qActiveTerm].push(newQ);
+      return newQ.id;
+    });
+    data.questionLog.practiceTests.push({ id: (data.questionLog.testSeq = (data.questionLog.testSeq||0)+1), name: payload.name||'Imported test', subjectIndex: qActiveSubject, term: qActiveTerm, questionIds: newIds, importedFrom: { code, owner: deck.owner_name || 'Unknown' } });
+    renderQList(); renderPtList(); updateQCountTip();
+    showToast(`Imported practice test "${payload.name}" into ${subj.name}, Term ${qActiveTerm}.`);
+  } else {
+    throw new Error('Unknown deck kind');
+  }
+  scheduleSave();
+  lastImported = { code, owner: deck.owner_name, payload: deck.payload };
+  document.getElementById('reportBlockedBtn').style.display = 'inline-block';
+  return true;
+}
 document.getElementById('importStackBtn').addEventListener('click', async ()=>{
   const code = document.getElementById('importCodeInput').value.trim().toUpperCase();
   if(!code){ showToast('Enter a share code.'); return; }
   try{
     const { data: rows } = await sb.from('shared_decks').select('*').eq('share_code', code).limit(1);
     if(!rows || rows.length===0){ showToast('Invalid share code — check and try again.'); return; }
-    const deck = rows[0];
-    // Scan on the way IN as well as on the way out — decks shared before
-    // these filters existed, or by a modified client, still get caught here.
-    const incomingProblem = validateShareable(deck.payload || {});
-    if(incomingProblem){
-      lastBlockedDeck = { code, owner: deck.owner_name, payload: deck.payload };
-      showToast(incomingProblem + ' This deck was not imported.');
-      document.getElementById('reportBlockedBtn').style.display = 'inline-block';
-      return;
-    }
-    if(deck.kind === 'flashcards'){
-      const payload = deck.payload;
-      if(!payload.cards || !Array.isArray(payload.cards) || payload.cards.length===0){ showToast('This shared stack has no cards.'); return; }
-      const emptyStack = data.flashcardStacks.findIndex(s=>s.cards.length===0);
-      const target = emptyStack>-1 ? emptyStack : 0;
-      data.flashcardStacks[target].name = payload.name || 'Imported';
-      data.flashcardStacks[target].cards = payload.cards.map(c=>({...c, id: (data.flashcardSeq = (data.flashcardSeq||0)+1)}));
-      // remember where it came from so a Report button can appear on it
-      data.flashcardStacks[target].importedFrom = { code, owner: deck.owner_name || 'Unknown' };
-      flashActiveStack = target; flashActiveCard=0; flashFlipped=false;
-      renderFlashAll();
-      showToast(`Imported "${payload.name}" into Stack ${target+1}.`);
-    } else if(deck.kind === 'practice_test'){
-      // BUGFIX: importing a shared practice test never worked before — this
-      // shared modal only ever checked for a `.cards` array, so a practice
-      // test's `.questions` payload silently failed with "Invalid share code".
-      const payload = deck.payload;
-      if(!payload.questions || !Array.isArray(payload.questions) || payload.questions.length===0){ showToast('This shared test has no questions.'); return; }
-      const subj = data.questionLog.subjects[qActiveSubject];
-      // BUGFIX: id generation used `(data.questionLog.questionSeq = (data.questionLog.questionSeq||0)+1)`, which
-      // becomes NaN if that counter is ever missing/undefined on an
-      // account — every imported question then got a NaN id, so the test
-      // was created with a name and term but its questions could never be
-      // found again ("all questions in this test have been deleted").
-      // This form is safe even if the counter was never initialized.
-      const newIds = payload.questions.map(q=>{
-        const newQ = {...q, id: (data.questionLog.questionSeq = (data.questionLog.questionSeq||0)+1)};
-        subj.terms[qActiveTerm].push(newQ);
-        return newQ.id;
-      });
-      data.questionLog.practiceTests.push({ id: (data.questionLog.testSeq = (data.questionLog.testSeq||0)+1), name: payload.name||'Imported test', subjectIndex: qActiveSubject, term: qActiveTerm, questionIds: newIds, importedFrom: { code, owner: deck.owner_name || 'Unknown' } });
-      renderQList(); renderPtList(); updateQCountTip();
-      showToast(`Imported practice test "${payload.name}" into ${subj.name}, Term ${qActiveTerm}.`);
-    } else {
-      throw new Error('Unknown deck kind');
-    }
-    scheduleSave();
-    lastImported = { code, owner: deck.owner_name, payload: deck.payload };
-    document.getElementById('reportBlockedBtn').style.display = 'inline-block';
+    await importDeckRow(rows[0], code);
     document.getElementById('importCodeInput').value='';
   }catch(e){ showToast('Invalid share code — check and try again.'); }
 });
@@ -1958,7 +2131,8 @@ searchInput.addEventListener('input', ()=>{
 
   // basic notebook page text
   data.basicNotebooks.forEach((nb,i)=>{
-    Object.entries(nb.pages).forEach(([pg, text])=>{
+    Object.entries(nb.pages).forEach(([pg, html])=>{
+      const text = stripHtml(html);
       if(text && text.toLowerCase().includes(q))
         results.push({type:'Basic note', label:`${nb.name} · p.${pg}`, preview: text.slice(0,60), action:()=>{
           basicActiveSubject=i; basicActivePage=parseInt(pg); renderBasicNotebooks();
@@ -2717,6 +2891,48 @@ document.getElementById('toggleResolvedReportsBtn')?.addEventListener('click', (
   loadHostReports();
 });
 
+/* ---- Shared with you (direct-to-friend inbox) ---- */
+let sharedWithYouCache = [];
+async function loadSharedWithYou(){
+  try{
+    const { data: rows } = await sb.from('shared_decks').select('*')
+      .eq('recipient_id', currentUserId).eq('dismissed', false)
+      .order('created_at', { ascending:false });
+    sharedWithYouCache = rows || [];
+  }catch(e){ sharedWithYouCache = []; } // table not migrated yet, or offline
+  renderSharedWithYou();
+}
+function renderSharedWithYou(){
+  const wrap = document.getElementById('sharedWithYouList');
+  if(!wrap) return;
+  if(sharedWithYouCache.length===0){ wrap.innerHTML = '<p style="color:#999;font-size:.85rem;">Nothing shared with you right now.</p>'; return; }
+  const kindLabel = { flashcards:'Flashcard stack', practice_test:'Practice test' };
+  wrap.innerHTML = sharedWithYouCache.map(row=>`
+    <div class="qcard">
+      <div class="qcard-head">
+        <div class="qcard-prompt">${(row.title||'Untitled').replace(/</g,'&lt;')}</div>
+        <span class="qtype-badge">${kindLabel[row.kind]||row.kind}</span>
+      </div>
+      <div style="font-size:.78rem;color:#999;margin-top:2px;">From ${(row.owner_name||'a friend').replace(/</g,'&lt;')}</div>
+      <div class="pillgroup" style="margin-top:8px;">
+        <button class="btn small amber" onclick="importSharedWithYou(${row.id})">Import</button>
+        <button class="btn small ghost" onclick="dismissSharedWithYou(${row.id})">Dismiss</button>
+      </div>
+    </div>`).join('');
+}
+async function importSharedWithYou(id){
+  const row = sharedWithYouCache.find(r=>r.id===id);
+  if(!row) return;
+  const ok = await importDeckRow(row, row.share_code);
+  if(ok) dismissSharedWithYou(id, true);
+}
+async function dismissSharedWithYou(id, silent){
+  sharedWithYouCache = sharedWithYouCache.filter(r=>r.id!==id);
+  renderSharedWithYou();
+  try{ await sb.from('shared_decks').update({ dismissed:true }).eq('id', id); }
+  catch(e){ if(!silent) showToast('Could not update — has migration_6.sql been run?'); }
+}
+
 /* ===================== DATA BACKUP ===================== */
 document.getElementById('exportDataBtn').addEventListener('click', ()=>{
   if(!data){ showToast('Nothing to export yet.'); return; }
@@ -2998,6 +3214,7 @@ async function renderAll(){
   renderQuestionLog();
   await loadFriendsData();
   ensureFriendCode();
+  loadSharedWithYou();
   renderFriends();
   renderLeaderboard();
   mlSubjectSelect();

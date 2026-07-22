@@ -12,10 +12,16 @@ Plain HTML/CSS/JS frontend backed by Supabase for auth and data.
 1. Upload every file in this folder to the GitHub repo root (overwrite
    existing files). Vercel redeploys automatically.
 2. Each CSS/JS reference carries a `?v=NN` cache-busting version so browsers
-   fetch fresh files. When files change, that number is bumped — if you ever
-   still see an old version, hard-refresh once (Ctrl+Shift+R, or close and
-   reopen the tab on mobile).
-3. Framework preset in Vercel should be **"Other"** with no build command and
+   fetch fresh files. When files change, that number is bumped.
+3. `vercel.json` tells browsers never to cache the **HTML** files. This
+   matters: `?v=NN` can only bust CSS/JS, not the HTML that references them —
+   so without this, a browser can serve a stale `app.html` (old tabs, old
+   layout) while loading fresh JS, making it look like changes didn't deploy.
+   Keep this file in the repo.
+4. If you ever still see something stale, hard-refresh once (Ctrl+Shift+R on
+   desktop; on mobile close the tab fully and reopen, or remove and re-add
+   any "Add to Home Screen" shortcut — those cache separately).
+5. Framework preset in Vercel should be **"Other"** with no build command and
    no output directory — this is a static site with no build step.
 
 ## Supabase setup / migrations
@@ -27,6 +33,8 @@ Run these once each in the Supabase SQL Editor, in order, if you haven't:
 - `migration_3.sql` — Friend IDs (adds `friend_code`, backfills all
   accounts, rebuilds the leaderboard view). If the view step errors, use the
   drop-and-recreate variant.
+- `migration_6.sql` — direct share-to-friend (adds `recipient_id` +
+  `dismissed` to `shared_decks`; the code-based share path is unaffected).
 - `migration_5.sql` — content reports (moderation backstop; also lets the
   host delete any shared deck).
 - `migration_4.sql` — Daily Feedback (questions, responses, window config).
@@ -92,6 +100,30 @@ duplicating it.
 
 **Mistake log** — each entry has "Done" (marks resolved, dims it, drops it
 from Home counts) and Delete.
+
+**Sharing** — flashcard stacks and practice tests can be shared two ways at
+once from the same Share popup: the existing code (type it in, works with
+anyone), or "Send directly to a friend" (pick from your friends list, no code
+needed). Direct shares land in a new **"Shared with you"** card on the
+Friends tab with Import/Dismiss — same content filters and Report button
+apply either way.
+
+**Flashcard order** — a Newest first / Oldest first toggle per stack,
+remembered per stack.
+
+**Notes with images** — Basic Notes is now a rich page: insert a photo or
+sketch, drag its bottom-right corner to resize (native browser resize, not a
+custom control), and pick left/right alignment — text genuinely reflows
+around it via real CSS float, it doesn't just sit on top. The page itself
+never grows; only what's inside it does. Images are downscaled client-side
+before saving so a phone photo doesn't bloat storage. Old plain-text notes
+were migrated automatically and still display correctly. (Formal/Cornell
+notes were not changed — this is Basic Notes only, for now.)
+
+**Class bell schedule** — now shows an actual visual timeline (a colored bar
+for the whole day, current block highlighted, a moving "now" marker, an
+"Up next" line) instead of just a status sentence. The editor below it also
+got a cleaner card layout instead of plain text rows.
 
 **Friends** — add by Friend ID (an 8-char code shown in the Friends tab with
 a copy button), not by display name. Requires `migration_3.sql`.
